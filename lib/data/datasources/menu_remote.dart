@@ -11,6 +11,7 @@ class MenuRemote {
         .select('*, categories(name)')
         .eq('branch_id', branchId);
 
+    // Filter by category jika diberikan, abaikan jika 'all'
     if (categoryId != null && categoryId.isNotEmpty && categoryId != 'all') {
       query = query.eq('category_id', categoryId);
     }
@@ -28,15 +29,10 @@ class MenuRemote {
         .select()
         .order('name');
 
-    final categories = (response as List)
+    // PERBAIKAN: Langsung kembalikan data murni dari database tanpa menyelipkan 'All'
+    return (response as List)
         .map((item) => Category.fromMap(Map<String, dynamic>.from(item)))
         .toList();
-
-    if (categories.any((category) => category.id == 'all')) {
-      return categories;
-    }
-
-    return [const Category(id: 'all', name: 'All'), ...categories];
   }
 
   Future<List<MenuItem>> getFeaturedMenus({
@@ -50,6 +46,7 @@ class MenuRemote {
         .eq('branch_id', branchId)
         .eq('is_available', true);
 
+    // Filter by category jika diberikan, abaikan jika 'all'
     if (categoryId != null && categoryId.isNotEmpty && categoryId != 'all') {
       query = query.eq('category_id', categoryId);
     }
@@ -76,4 +73,3 @@ class MenuRemote {
     return MenuItem.fromMap(mapped);
   }
 }
- 

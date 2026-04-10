@@ -65,7 +65,9 @@ class HomeScreen extends StatelessWidget {
         final userName = appState.isLoggedIn
             ? appState.user.name.trim()
             : 'Guest';
-        final firstName = userName.isEmpty ? 'Guest' : userName.split(' ').first;
+        final firstName = userName.isEmpty
+            ? 'Guest'
+            : userName.split(' ').first;
 
         return CustomScrollView(
           slivers: [
@@ -159,9 +161,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        firstName.isNotEmpty
-                            ? firstName[0].toUpperCase()
-                            : 'G',
+                        firstName.isNotEmpty ? firstName[0].toUpperCase() : 'G',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -371,15 +371,14 @@ class HomeScreen extends StatelessWidget {
                                 final category = homeCtrl.categories[index];
                                 return _CategoryButton(
                                   label: category.name,
-                                  icon:
-                                      homeCtrl.iconForCategory(category.name),
+                                  icon: homeCtrl.iconForCategory(category.name),
                                   onTap: () async {
                                     await homeCtrl.selectCategory(category.id);
 
                                     final mainCtrl = Get.find<MainController>();
                                     final menuCtrl = Get.find<MenuController>();
 
-                                    menuCtrl.changeCategory(category.id);
+                                    menuCtrl.selectedType.value = category.id;
                                     mainCtrl.changeTab(1);
                                   },
                                 );
@@ -417,9 +416,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         child: const Text(
                           'Belum ada cabang yang dipilih.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
                       )
                     else if (homeCtrl.featuredMenus.isEmpty)
@@ -446,11 +443,11 @@ class HomeScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisExtent: 230,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                        ),
+                              crossAxisCount: 2,
+                              mainAxisExtent: 230,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                            ),
                         itemBuilder: (context, index) {
                           final item = homeCtrl.featuredMenus[index];
                           return _MenuCard(
@@ -503,7 +500,8 @@ class HomeScreen extends StatelessWidget {
                 onTap: branch.isOpen
                     ? () async {
                         await homeCtrl.selectBranch(branch);
-                        await Get.find<MenuController>().reloadForBranchChange();
+                        await Get.find<MenuController>()
+                            .reloadForBranchChange();
                         Navigator.pop(sheetContext);
                       }
                     : null,

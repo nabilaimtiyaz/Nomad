@@ -1,16 +1,20 @@
 class Category {
   final String id;
   final String name;
+  final String? icon; // PERBAIKAN: Menambahkan properti icon (nullable)
 
   const Category({
     required this.id,
     required this.name,
+    this.icon, // PERBAIKAN: Ditambahkan ke constructor
   });
 
   factory Category.fromMap(Map<String, dynamic> map) {
     return Category(
       id: (map['id'] ?? '').toString(),
       name: (map['name'] ?? '').toString(),
+      icon: map['icon']
+          ?.toString(), // PERBAIKAN: Membaca kolom icon dari database
     );
   }
 }
