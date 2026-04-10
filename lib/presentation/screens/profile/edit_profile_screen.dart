@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/app_state.dart';
 
@@ -21,7 +23,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final user = AppStateProvider.of(context).user;
+    final user = Get.find<AppStateController>().user;
     _nameCtrl = TextEditingController(text: user.name);
     _phoneCtrl = TextEditingController(text: user.phone);
     // addListener — callback saat nilai TextField berubah
@@ -43,9 +45,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!mounted) return;
 
     // Simpan ke AppState — semua screen yang mendengarkan akan rebuild
-    AppStateProvider.of(
-      context,
-    ).updateProfile(name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim());
+    Get.find<AppStateController>().updateProfile(
+      name: _nameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+    );
 
     setState(() {
       _loading = false;
@@ -62,7 +65,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = AppStateProvider.of(context).user;
+    final user = Get.find<AppStateController>().user;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

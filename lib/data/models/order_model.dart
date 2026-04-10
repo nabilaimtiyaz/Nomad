@@ -3,34 +3,16 @@ import 'menu_item_model.dart';
 enum OrderStatus { pending, confirmed, ready, done, cancelled }
 
 extension OrderStatusX on OrderStatus {
-  String get label {
-    switch (this) {
-      case OrderStatus.pending:   return 'Menunggu Konfirmasi';
-      case OrderStatus.confirmed: return 'Sedang Diproses';
-      case OrderStatus.ready:     return 'Siap Diambil';
-      case OrderStatus.done:      return 'Selesai';
-      case OrderStatus.cancelled: return 'Dibatalkan';
-    }
+  bool get isActive {
+    return this == OrderStatus.pending ||
+        this == OrderStatus.confirmed ||
+        this == OrderStatus.ready;
   }
-
-  String get emoji {
-    switch (this) {
-      case OrderStatus.pending:   return '⏳';
-      case OrderStatus.confirmed: return '☕';
-      case OrderStatus.ready:     return '✅';
-      case OrderStatus.done:      return '🎉';
-      case OrderStatus.cancelled: return '❌';
-    }
-  }
-
-  bool get isActive =>
-    this == OrderStatus.pending ||
-    this == OrderStatus.confirmed ||
-    this == OrderStatus.ready;
 }
 
 class OrderModel {
   final String id;
+  final String userId;
   final String queueNumber;
   final String branchId;
   final String branchName;
@@ -39,17 +21,18 @@ class OrderModel {
   final OrderStatus status;
   final DateTime createdAt;
   final int subtotal;
-  final int discountAmount;   // total diskon (voucher + poin)
+  final int discountAmount;
   final int serviceFee;
   final int grandTotal;
   final int pointsEarned;
-  final int pointsUsed;       // poin yang di-redeem
-  final String? voucherCode;  // kode voucher yang dipakai
-  final String? orderType;    // dine_in / takeaway
-  final String? notes;        // catatan order keseluruhan
+  final int pointsUsed;
+  final String? voucherCode;
+  final String orderType;
+  final String? notes;
 
   const OrderModel({
     required this.id,
+    required this.userId,
     required this.queueNumber,
     required this.branchId,
     required this.branchName,
@@ -68,17 +51,29 @@ class OrderModel {
     this.notes,
   });
 
-  OrderModel copyWith({OrderStatus? status}) {
+  OrderModel copyWith({
+    String? id,
+    OrderStatus? status,
+  }) {
     return OrderModel(
-      id: id, queueNumber: queueNumber,
-      branchId: branchId, branchName: branchName,
-      items: items, paymentMethod: paymentMethod,
-      createdAt: createdAt, subtotal: subtotal,
-      discountAmount: discountAmount,
-      serviceFee: serviceFee, grandTotal: grandTotal,
-      pointsEarned: pointsEarned, pointsUsed: pointsUsed,
-      voucherCode: voucherCode, orderType: orderType, notes: notes,
+      id: id ?? this.id,
+      userId: userId,
+      queueNumber: queueNumber,
+      branchId: branchId,
+      branchName: branchName,
+      items: items,
+      paymentMethod: paymentMethod,
       status: status ?? this.status,
+      createdAt: createdAt,
+      subtotal: subtotal,
+      discountAmount: discountAmount,
+      serviceFee: serviceFee,
+      grandTotal: grandTotal,
+      pointsEarned: pointsEarned,
+      pointsUsed: pointsUsed,
+      voucherCode: voucherCode,
+      orderType: orderType,
+      notes: notes,
     );
   }
 }

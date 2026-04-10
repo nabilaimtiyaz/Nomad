@@ -1,149 +1,142 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
-import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/app_state.dart';
 import '../../../data/models/user_model.dart';
 
+// LoyaltyScreen — menampilkan poin, tier, dan opsi redeem.
+// Perubahan: semua data diambil dari AppState (bukan dummy statis),
+// tombol Redeem benar-benar mengurangi saldo poin via appState.redeemPoints()
 class LoyaltyScreen extends StatelessWidget {
   const LoyaltyScreen({super.key});
 
   static const _tiers = [
-    ('bronze', 'Bronze', 0, '1×  Poin per transaksi'),
-    ('silver', 'Silver', 500, '1.2×  Poin per transaksi'),
-    ('gold', 'Gold', 2000, '1.5×  Poinper transaksik'),
-    ('platinum', 'Platinum', 5000, '2×  Poin    per transaksis'),
+    (
+      'silver',
+      'Silver',
+      500,
+      '★',
+      '1.2× Point Multiplier\nBirthday Reward',
+      false,
+    ),
+    (
+      'gold',
+      'Gold',
+      2000,
+      '◆',
+      '1.5× Point Multiplier\nPriority Reservations\nFree Monthly Drink',
+      true,
+    ),
+    (
+      'platinum',
+      'Platinum',
+      5000,
+      '✦',
+      '2× Point Multiplier\nConcierge Service\nExclusive Event Access',
+      false,
+    ),
+  ];
+
+  static const _redeems = [
+    (
+      'Artisan Coffee',
+      'Any handcrafted beverage, any size.',
+      500,
+      Icons.coffee_rounded,
+    ),
+    (
+      'Signature Beans',
+      'Choice of single origin or house blend.',
+      2000,
+      Icons.grain_rounded,
+    ),
+    (
+      'Morning Pastry',
+      'Freshly baked in-house daily.',
+      350,
+      Icons.breakfast_dining,
+    ),
+    (
+      'Nomad Vessel',
+      'Limited edition ceramic tumbler.',
+      4500,
+      Icons.sports_bar_rounded,
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<AppStateNotifier>(
+    return GetBuilder<AppStateController>(
       builder: (appState) {
         final user = appState.user;
-        final coins = user.loyaltyPoints;
+        final pts = user.loyaltyPoints;
         final tier = user.membershipTier;
-        final earned = user.totalEarnedPoints;
-        final tierIdx = _tiers.indexWhere((t) => t.$1 == tier);
-        final nextTier = tierIdx < _tiers.length - 1
-            ? _tiers[tierIdx + 1]
-            : null;
-        final curMin = _tiers[tierIdx].$3;
-        final nextMin = nextTier?.$3 ?? curMin;
-        final progress = nextTier != null
-            ? ((earned - curMin) / (nextMin - curMin)).clamp(0.0, 1.0)
-            : 1.0;
+        const maxPts = 3000;
 
         return Scaffold(
           backgroundColor: AppColors.background,
           body: CustomScrollView(
             slivers: [
-              // ── App Bar ────────────────────────────────────────────────
               SliverAppBar(
                 floating: true,
                 snap: true,
                 backgroundColor: AppColors.background,
                 foregroundColor: AppColors.textPrimary,
                 elevation: 0,
-                automaticallyImplyLeading: false,
-                title: Row(
-                  children: [
-                    const Icon(
-                      Icons.stars_rounded,
-                      size: 20,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'My Rewards',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
+                title: const Text(
+                  'Nomad',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
                 ),
                 actions: [
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: CircleAvatar(
                       radius: 16,
-                      backgroundColor: AppColors.primaryDark,
-                      child: Text(
-                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'N',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                      backgroundImage: const NetworkImage(
+                        'https://i.pravatar.cc/80?img=5',
                       ),
+                      backgroundColor: AppColors.surfaceGrey,
                     ),
                   ),
                 ],
               ),
 
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // ── Kartu saldo utama ────────────────────────────────
+                    // Kartu saldo
                     Container(
                       decoration: BoxDecoration(
-                        gradient: AppColors.gradientHeader,
+                        gradient: AppColors.gradientLoyalty,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.18),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'TIER: ${UserModel.getTierLabel(tier).toUpperCase()}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
                           const Text(
-                            'Your Privileges',
+                            'TOTAL BALANCE',
                             style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              height: 1.1,
+                              fontSize: 10,
+                              letterSpacing: 2,
+                              color: Colors.white60,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Exclusive access to member benefits.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white70,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Saldo poin
+                          const SizedBox(height: 6),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                Formatters.commas(coins),
+                                Formatters.commas(pts),
                                 style: const TextStyle(
-                                  fontSize: 40,
+                                  fontSize: 44,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   height: 1,
@@ -153,7 +146,7 @@ class LoyaltyScreen extends StatelessWidget {
                               const Padding(
                                 padding: EdgeInsets.only(bottom: 6),
                                 child: Text(
-                                  'Pts',
+                                  'pts',
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: Colors.white70,
@@ -162,147 +155,143 @@ class LoyaltyScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-
-                          const SizedBox(height: 16),
-
-                          // Progress bar
-                          if (nextTier != null) ...[
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Progress to ${nextTier.$2}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white70,
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${UserModel.getTierLabel(tier)} Status',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '${nextMin - earned} pts left',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                  Text(
+                                    '${Formatters.commas(maxPts - pts.clamp(0, maxPts))} pts to Platinum',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white60,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                minHeight: 7,
-                                backgroundColor: Colors.white24,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: (pts / maxPts).clamp(0.0, 1.0),
+                              minHeight: 6,
+                              backgroundColor: Colors.white24,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  tier.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.white54,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                Text(
-                                  nextTier.$2.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.white54,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ] else ...[
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: const LinearProgressIndicator(
-                                value: 1.0,
-                                minHeight: 7,
-                                backgroundColor: Colors.white24,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
+                          ),
+                          const SizedBox(height: 6),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'GOLD',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: Colors.white54,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Platinum — Tier tertinggi',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white70,
+                              Text(
+                                'PLATINUM',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: Colors.white54,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
-                    // ── Membership Tiers ─────────────────────────────────
-                    const Text(
-                      'Membership Tiers',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
+                    // Status Tiers
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Status Tiers',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {},
+                          child: const Text(
+                            'View All Perks',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 14),
 
                     ..._tiers.map((t) {
-                      final (id, name, minPts, benefit) = t;
+                      final (id, name, _, icon, benefits, __) = t;
                       final isCurrent = id == tier;
-                      final isUnlocked = earned >= minPts;
-
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: isCurrent
                               ? AppColors.tealLight
-                              : AppColors.surface,
+                              : AppColors.surfaceGrey,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: isCurrent
                                 ? AppColors.teal
-                                : AppColors.cardBorder,
-                            width: isCurrent ? 1.5 : 1,
+                                : Colors.transparent,
+                            width: isCurrent ? 1.5 : 0,
                           ),
                         ),
                         child: Row(
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 40,
+                              height: 40,
                               decoration: BoxDecoration(
                                 color: isCurrent
                                     ? AppColors.teal.withOpacity(0.15)
-                                    : AppColors.surfaceGrey,
-                                borderRadius: BorderRadius.circular(12),
+                                    : AppColors.surface,
+                                shape: BoxShape.circle,
                               ),
-                              child: Icon(
-                                isUnlocked
-                                    ? Icons.workspace_premium_rounded
-                                    : Icons.lock_rounded,
-                                size: 20,
-                                color: isCurrent
-                                    ? AppColors.teal
-                                    : AppColors.textSecondary,
+                              child: Center(
+                                child: Text(
+                                  icon,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: isCurrent
+                                        ? AppColors.teal
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,7 +301,7 @@ class LoyaltyScreen extends StatelessWidget {
                                       Text(
                                         name,
                                         style: TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 15,
                                           fontWeight: FontWeight.w800,
                                           color: isCurrent
                                               ? AppColors.teal
@@ -333,7 +322,7 @@ class LoyaltyScreen extends StatelessWidget {
                                             ),
                                           ),
                                           child: const Text(
-                                            'ACTIVE',
+                                            'CURRENT',
                                             style: TextStyle(
                                               fontSize: 9,
                                               fontWeight: FontWeight.w800,
@@ -347,10 +336,10 @@ class LoyaltyScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    benefit,
+                                    benefits,
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      height: 1.4,
+                                      fontSize: 11,
+                                      height: 1.5,
                                       color: isCurrent
                                           ? AppColors.teal
                                           : AppColors.textSecondary,
@@ -359,22 +348,175 @@ class LoyaltyScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            Text(
-                              minPts == 0
-                                  ? 'Default'
-                                  : '${Formatters.commas(minPts)}+',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: isCurrent
-                                    ? AppColors.teal
-                                    : AppColors.textSecondary,
-                              ),
-                            ),
                           ],
                         ),
                       );
                     }),
+
+                    const SizedBox(height: 24),
+
+                    // Redeem section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Redeem',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const Text(
+                          'Your points, your choice.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.75,
+                      children: _redeems.map((r) {
+                        final (name, desc, ptsNeeded, icon) = r;
+                        final canRedeem = pts >= ptsNeeded;
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.cardBorder),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceGrey,
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(14),
+                                    ),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Center(
+                                        child: Icon(
+                                          icon,
+                                          size: 52,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 8,
+                                        left: 8,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.dark,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${Formatters.commas(ptsNeeded)} PTS',
+                                            style: const TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      desc,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Tombol Redeem — aktif/disabled berdasarkan saldo
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: GestureDetector(
+                                        onTap: canRedeem
+                                            ? () => _confirmRedeem(
+                                                context,
+                                                appState,
+                                                name,
+                                                ptsNeeded,
+                                              )
+                                            : null,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 7,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: canRedeem
+                                                ? AppColors.primary
+                                                : AppColors.divider,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              canRedeem
+                                                  ? 'Redeem'
+                                                  : 'Poin kurang',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: canRedeem
+                                                    ? Colors.white
+                                                    : AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ]),
                 ),
               ),
@@ -382,6 +524,57 @@ class LoyaltyScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  // _confirmRedeem — dialog konfirmasi sebelum kurangi poin
+  void _confirmRedeem(
+    BuildContext context,
+    AppStateController appState,
+    String rewardName,
+    int ptsNeeded,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Konfirmasi Redeem',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Tukar $ptsNeeded poin untuk mendapatkan "$rewardName"?\n\nSaldo poin setelah: ${appState.user.loyaltyPoints - ptsNeeded} poin',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              final success = appState.redeemPoints(ptsNeeded);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    success
+                        ? '✓ $ptsNeeded poin berhasil ditukar untuk $rewardName!'
+                        : 'Saldo poin tidak cukup',
+                  ),
+                  backgroundColor: success ? AppColors.teal : AppColors.error,
+                ),
+              );
+            },
+            child: const Text(
+              'Tukar',
+              style: TextStyle(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -3,469 +3,303 @@ import 'package:get/get.dart';
 
 import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/dummy_data.dart';
+import '../../../data/models/menu_item_model.dart';
 import '../../../data/models/order_model.dart';
 
 class OrderHistoryScreen extends StatelessWidget {
   const OrderHistoryScreen({super.key});
 
+  static List<OrderModel> get _demoOrders {
+    final branch = DummyData.branches.first;
+    final items = [
+      CartItem.simple(DummyData.menuItems[0]).copyWith(qty: 2),
+      CartItem.simple(DummyData.menuItems[4]).copyWith(qty: 1),
+    ];
+    final subtotal = items.fold<int>(0, (sum, item) => sum + item.subtotal);
+
+    return [
+      OrderModel(
+        id: 'DEMO-001',
+        queueNumber: 'A-042',
+        branchId: branch.id,
+        branchName: branch.name,
+        items: items,
+        paymentMethod: 'QRIS',
+        status: OrderStatus.done,
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        subtotal: subtotal,
+        serviceFee: 0,
+        grandTotal: subtotal,
+        pointsEarned: subtotal ~/ 1000,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<AppStateNotifier>(
+    return GetBuilder<AppStateController>(
       builder: (appState) {
-        final orders = appState.orders;
+        final allOrders = [...appState.orders, ..._demoOrders];
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppBar(
-            title: const Text('Riwayat Pesanan'),
-            backgroundColor: AppColors.background,
-            elevation: 0,
+          body: SafeArea(
+            child: allOrders.isEmpty
+                ? _buildEmpty(context)
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                    children: [
+                      const Text(
+                        'PAST EXPERIENCES',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'ORDER\nHISTORY',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Riwayat perjalanan kopi kamu. Setiap cangkir adalah cerita.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ...allOrders.map(
+                        (order) => _HistoryCard(
+                          order: order,
+                          onViewStatus: order.status.isActive
+                              ? () => Get.toNamed(
+                                    AppRoutes.orderStatus,
+                                    arguments: order,
+                                  )
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
-          body: orders.isEmpty
-              ? const Center(child: Text('Belum ada riwayat pesanan'))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: orders.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, index) {
-                    final order = orders[index];
-                    return _HistoryCard(order: order);
-                  },
-                ),
         );
       },
     );
   }
+
+  Widget _buildEmpty(BuildContext context) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.receipt_long_outlined,
+              size: 56,
+              color: AppColors.divider,
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Belum ada pesanan',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Mulai pesan dan nikmati pengalaman Nomad!',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
 }
 
 class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.order});
-
   final OrderModel order;
+  final VoidCallback? onViewStatus;
+
+  const _HistoryCard({required this.order, this.onViewStatus});
+
+  Color get _statusColor {
+    switch (order.status) {
+      case OrderStatus.done:
+        return AppColors.teal;
+      case OrderStatus.cancelled:
+        return AppColors.primary;
+      case OrderStatus.pending:
+      case OrderStatus.confirmed:
+      case OrderStatus.ready:
+        return AppColors.warning;
+    }
+  }
+
+  String get _statusLabel {
+    switch (order.status) {
+      case OrderStatus.pending:
+        return 'Menunggu';
+      case OrderStatus.confirmed:
+        return 'Diproses';
+      case OrderStatus.ready:
+        return 'Siap Ambil';
+      case OrderStatus.done:
+        return 'Selesai';
+      case OrderStatus.cancelled:
+        return 'Dibatalkan';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final totalQty = order.items.fold<int>(0, (sum, item) => sum + item.qty);
-    final firstItemName = order.items.isNotEmpty
-        ? order.items.first.menuItem.name
-        : 'Pesanan';
-    final extraCount = totalQty > 1 ? totalQty - 1 : 0;
-
     return Container(
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.cardBorder),
+        boxShadow: order.status.isActive
+            ? [
+                BoxShadow(
+                  color: AppColors.warning.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _OrderImage(order: order),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Perubahan: judul utama sekarang nama menu, bukan nama cabang
-                    Text(
-                      firstItemName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: Container(
+              height: 140,
+              width: double.infinity,
+              color: AppColors.surfaceGrey,
+              child: order.items.isNotEmpty &&
+                      order.items.first.menuItem.imageUrl.startsWith('http')
+                  ? Image.network(
+                      order.items.first.menuItem.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.coffee_rounded,
+                        size: 48,
+                        color: AppColors.divider,
                       ),
+                    )
+                  : const Icon(
+                      Icons.coffee_rounded,
+                      size: 48,
+                      color: AppColors.divider,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      order.branchName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatOrderDate(order.createdAt),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    _StatusChip(status: order.status),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                Formatters.currency(order.grandTotal),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _OrderItemRow(
-            name: firstItemName,
-            qty: order.items.isNotEmpty ? order.items.first.qty : 0,
-            price: order.items.isNotEmpty ? order.items.first.subtotal : 0,
-          ),
-          if (extraCount > 1) ...[
-            const SizedBox(height: 6),
-            Text(
-              '+${extraCount - 1} item lainnya',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
             ),
-          ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    _showOrderDetails(context, order);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.primary),
-                    foregroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'Details',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  String _formatOrderDate(DateTime dateTime) {
-    final months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    final day = dateTime.day;
-    final month = months[dateTime.month - 1];
-    final year = dateTime.year;
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-
-    return '$month $day, $year •\n$hour:$minute';
-  }
-
-  void _showOrderDetails(BuildContext context, OrderModel order) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.background,
-      showDragHandle: true,
-      builder: (_) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          Padding(
+            padding: const EdgeInsets.all(14),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Order Details',
-                  style: TextStyle(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'ENTRY #${order.id.split('-').last}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _statusColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _statusLabel,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: _statusColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      order.queueNumber,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  order.items.isNotEmpty
+                      ? order.items.first.menuItem.name
+                      : 'Pesanan',
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   order.branchName,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 16),
-                ...order.items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${item.qty}x ${item.menuItem.name}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          Formatters.currency(item.subtotal),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                const SizedBox(height: 10),
+                Text(
+                  '${order.items.length} item • ${Formatters.currency(order.grandTotal)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Divider(),
-                const SizedBox(height: 8),
-                _DetailRow(
-                  label: 'Subtotal',
-                  value: Formatters.currency(order.subtotal),
-                ),
-                const SizedBox(height: 8),
-                _DetailRow(
-                  label: 'Tax & Service',
-                  value: Formatters.currency(order.serviceFee),
-                ),
-                const SizedBox(height: 8),
-                _DetailRow(
-                  label: 'Discount',
-                  value: '- ${Formatters.currency(order.discountAmount)}',
-                ),
-                const SizedBox(height: 10),
-                _DetailRow(
-                  label: 'Grand Total',
-                  value: Formatters.currency(order.grandTotal),
-                  isStrong: true,
-                ),
+                if (onViewStatus != null) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: onViewStatus,
+                      child: const Text('Lihat Status'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-}
-
-class _OrderImage extends StatelessWidget {
-  const _OrderImage({required this.order});
-
-  final OrderModel order;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasItems = order.items.isNotEmpty;
-    final imageUrl = hasItems ? order.items.first.menuItem.imageUrl : '';
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: 58,
-        height: 58,
-        color: AppColors.surfaceGrey,
-        child: imageUrl.startsWith('http')
-            ? Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.coffee_rounded,
-                  color: AppColors.textSecondary,
-                  size: 26,
-                ),
-              )
-            : const Icon(
-                Icons.coffee_rounded,
-                color: AppColors.textSecondary,
-                size: 26,
-              ),
+        ],
       ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final OrderStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final config = _statusConfig(status);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: config.background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        config.label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: config.foreground,
-          letterSpacing: 0.4,
-        ),
-      ),
-    );
-  }
-
-  _StatusStyle _statusConfig(OrderStatus status) {
-    final raw = status.toString().split('.').last.toLowerCase();
-
-    if (raw == 'success' || raw == 'completed' || raw == 'done') {
-      return const _StatusStyle(
-        label: '• DONE',
-        background: Color(0xFFD8F5E8),
-        foreground: Color(0xFF119B63),
-      );
-    }
-
-    if (raw == 'cancelled' || raw == 'canceled') {
-      return const _StatusStyle(
-        label: '• CANCELLED',
-        background: Color(0xFFFDE1E1),
-        foreground: Color(0xFFD64545),
-      );
-    }
-
-    if (raw == 'processing' || raw == 'process') {
-      return const _StatusStyle(
-        label: '• PROCESS',
-        background: Color(0xFFE7F1FF),
-        foreground: Color(0xFF2B6EDC),
-      );
-    }
-
-    return const _StatusStyle(
-      label: '• PENDING',
-      background: Color(0xFFFFF0D9),
-      foreground: Color(0xFFD48A00),
-    );
-  }
-}
-
-class _StatusStyle {
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  const _StatusStyle({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-}
-
-class _OrderItemRow extends StatelessWidget {
-  const _OrderItemRow({
-    required this.name,
-    required this.qty,
-    required this.price,
-  });
-
-  final String name;
-  final int qty;
-  final int price;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            '$qty x $name',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          Formatters.currency(price),
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.isStrong = false,
-  });
-
-  final String label;
-  final String value;
-  final bool isStrong;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: isStrong ? 15 : 13,
-            fontWeight: isStrong ? FontWeight.w800 : FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: isStrong ? 15 : 13,
-            fontWeight: isStrong ? FontWeight.w900 : FontWeight.w700,
-            color: isStrong ? AppColors.primary : AppColors.textPrimary,
-          ),
-        ),
-      ],
     );
   }
 }

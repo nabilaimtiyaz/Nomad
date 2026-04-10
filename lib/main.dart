@@ -1,19 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/app_state.dart';
 import 'core/constants/app_colors.dart';
-import 'presentation/screens/splash_screen.dart';
+import 'core/routes/app_routes.dart';
+import 'core/routes/app_pages.dart';
 
-void main() {
+// 🔥 TAMBAH IMPORT
+import 'controllers/auth/login_controller.dart';
+import 'controllers/auth/register_controller.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
+  await dotenv.load(fileName: ".env");
 
-  Get.put<AppStateNotifier>(AppStateNotifier(), permanent: true);
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+
+  // 🔥 FIX: REGISTER CONTROLLER GLOBAL
+  Get.put<AppStateController>(AppStateController(), permanent: true);
+  Get.put<LoginController>(LoginController(), permanent: true);
+  Get.put<RegisterController>(RegisterController(), permanent: true);
+
   runApp(const NomadApp());
 }
 
@@ -22,47 +34,16 @@ class NomadApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppStateProvider(
-      notifier: Get.find<AppStateNotifier>(),
-      child: GetMaterialApp(
-        title: 'Kedai Nomad',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          fontFamily: 'Roboto',
-          scaffoldBackgroundColor: AppColors.background,
-          colorScheme: const ColorScheme.light(
-            primary: AppColors.primary,
-            secondary: AppColors.teal,
-            surface: AppColors.surface,
-          ),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: AppColors.background,
-            foregroundColor: AppColors.textPrimary,
-            elevation: 0,
-            centerTitle: true,
-            surfaceTintColor: Colors.transparent,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-          snackBarTheme: SnackBarThemeData(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.dark,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-        home: const SplashScreen(),
+    return GetMaterialApp(
+      title: 'Kedai Nomad',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        fontFamily: 'Roboto',
+        scaffoldBackgroundColor: AppColors.background,
       ),
+      initialRoute: AppRoutes.splash,
+      getPages: AppPages.pages,
     );
   }
 }

@@ -6,32 +6,40 @@ class AppColors {
   static const primaryDark  = Color(0xFF8B0015);
   static const primaryLight = Color(0xFFD4213A);
 
+  // ── Accent / Teal ────────────────────────────────────────────────────
   static const teal         = Color(0xFF1A6B5A);
   static const tealMedium   = Color(0xFF00897B);
   static const tealLight    = Color(0xFFE0F2F0);
 
+  // ── Neutral ──────────────────────────────────────────────────────────
   static const background   = Color(0xFFFAF8F5); // krem hangat
   static const surface      = Color(0xFFFFFFFF);
   static const surfaceGrey  = Color(0xFFF5F3F0);
   static const dark         = Color(0xFF1A1A1A);
   static const darkCard     = Color(0xFF2A2A2A);
 
+  // ── Text ─────────────────────────────────────────────────────────────
   static const textPrimary   = Color(0xFF1A1A1A);
   static const textSecondary = Color(0xFF6B6B6B);
   static const textHint      = Color(0xFFAAAAAA);
 
+  // ── Status ───────────────────────────────────────────────────────────
   static const success = Color(0xFF1A6B5A);
   static const error   = Color(0xFFB8001F);
   static const warning = Color(0xFFFF9800);
   static const info    = Color(0xFF1976D2);
 
+  // ── Membership Tiers ─────────────────────────────────────────────────
   static const bronze   = Color(0xFFCD7F32);
   static const silver   = Color(0xFF9E9E9E);
   static const gold     = Color(0xFFFFB300);
   static const platinum = Color(0xFF1A6B5A);
 
+  // ── Misc ─────────────────────────────────────────────────────────────
   static const divider    = Color(0xFFEEEBE6);
   static const cardBorder = Color(0xFFE8E4DE);
+
+  // ── Gradients ────────────────────────────────────────────────────────
 
   // Header & AppBar utama
   static const gradientHeader = LinearGradient(

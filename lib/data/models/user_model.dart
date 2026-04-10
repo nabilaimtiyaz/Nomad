@@ -37,6 +37,40 @@ class UserModel {
     );
   }
 
+  factory UserModel.fromMap(Map<String, dynamic> map) {
+    final totalEarnedPoints = (map['total_earned_points'] ??
+            map['totalEarnedPoints'] ??
+            map['total_points'] ??
+            0) as int;
+
+    final loyaltyPoints =
+        (map['loyalty_points'] ?? map['loyaltyPoints'] ?? 0) as int;
+
+    final tier = (map['membership_tier'] ?? map['membershipTier']) as String?;
+
+    return UserModel(
+      id: (map['auth_id'] ?? map['id'] ?? '').toString(),
+      name: (map['name'] ?? '').toString(),
+      email: (map['email'] ?? '').toString(),
+      phone: (map['phone'] ?? '').toString(),
+      loyaltyPoints: loyaltyPoints,
+      totalEarnedPoints: totalEarnedPoints,
+      membershipTier: tier ?? getTier(totalEarnedPoints),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'auth_id': id,
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'loyalty_points': loyaltyPoints,
+      'total_earned_points': totalEarnedPoints,
+      'membership_tier': membershipTier,
+    };
+  }
+
   static String getTier(int totalEarned) {
     if (totalEarned >= 5000) return 'platinum';
     if (totalEarned >= 2000) return 'gold';

@@ -1,583 +1,555 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/dummy_data.dart';
+import '../../../controllers/home/home_controller.dart';
+import '../../../controllers/home/main_controller.dart';
 import '../../../data/models/branch_model.dart';
 import '../../../data/models/menu_item_model.dart';
-import '../../../data/models/user_model.dart';
-import '../menu/menu_detail_sheet.dart';
 import '../loyalty/loyalty_screen.dart';
-import '../../../core/app_state.dart';
+import '../menu/menu_detail_sheet.dart';
 
-class HomeScreen extends StatefulWidget {
-  final Branch? selectedBranch;
-  final Function(Branch) onBranchSelected;
-  final VoidCallback? onNavigateToMenu;
-  final Function(MenuItem)? onAddToCart;
-  final Function(MenuItem, int, String)? onAddToCartWithDetail;
-  final Function(String, int)? onQtyChanged;
-  final Map<String, CartItem> cart;
-  final VoidCallback? onOpenCart;
-
-  const HomeScreen({
-    super.key,
-    required this.selectedBranch,
-    required this.onBranchSelected,
-    this.onNavigateToMenu,
-    this.onAddToCart,
-    this.onAddToCartWithDetail,
-    this.onQtyChanged,
-    this.cart = const {},
-    this.onOpenCart,
-  });
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  void _showBranchPicker() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _BranchSheet(
-        selected: widget.selectedBranch,
-        onPick: (branch) {
-          widget.onBranchSelected(branch);
-          Navigator.pop(context);
-        },
-      ),
-    );
-  }
-
-  void _openDetail(MenuItem item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MenuDetailSheet(
-        item: item,
-        currentQty: widget.cart[item.id]?.qty ?? 0,
-        currentNotes: widget.cart[item.id]?.notes ?? '',
-        onAdd: (qty, notes) {
-          widget.onAddToCartWithDetail?.call(item, qty, notes);
-        },
-        onRemove: () {
-          widget.onQtyChanged?.call(item.id, -1);
-        },
-      ),
-    );
-  }
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = AppStateProvider.of(context).user;
-    final popular =
-        DummyData.menuItems
-            .where(
-              (item) =>
-                  widget.selectedBranch == null ||
-                  item.branchId == widget.selectedBranch!.id,
-            )
-            .toList()
-          ..sort((a, b) => b.orderCount.compareTo(a.orderCount));
+    final homeCtrl = Get.find<HomeController>();
+    final appState = Get.find<AppStateController>();
 
     return Scaffold(
-      // Menggunakan warna background yang lebih soft/krem sesuai referensi
-      backgroundColor: const Color(0xFFFCF7F3),
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader(user)),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _buildMemberCard(user),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                    'Weekly Curations',
-                    'VIEW ALL',
-                    onTap: widget.onNavigateToMenu,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildOfferBanner(),
-                  const SizedBox(height: 24),
-                  _buildCategoryRow(),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader('Popular Nomads', 'FILTER'),
-                  const SizedBox(height: 12),
-                  _buildMenuGrid(popular.take(4).toList()),
-                ]),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+      backgroundColor: AppColors.background,
+      body: Obx(() {
+        if (homeCtrl.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-  Widget _buildHeader(UserModel user) {
-    final firstName = user.name.trim().isEmpty
-        ? 'Guest'
-        : user.name.trim().split(' ').first;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Kiri: Branch Picker
-          GestureDetector(
-            onTap: _showBranchPicker,
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFBEBEA), // Light red bg
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.location_on,
-                    color: Color(0xFFBA1A1A),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'CURRENT BRANCH',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.selectedBranch?.name ?? 'Pilih Cabang',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFBA1A1A), // Red color
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Kanan: Avatar & Notification
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primaryDark,
-                child: Text(
-                  user.name.isNotEmpty ? user.name[0].toUpperCase() : 'N',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Icon(
-                Icons.notifications_none_rounded,
-                color: Colors.black87,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMemberCard(UserModel user) {
-    final tier = user.membershipTier;
-    final points = user.loyaltyPoints;
-    final tierLabel = UserModel.getTierLabel(tier);
-    const nextPoints = 2500;
-    final progress = (points / nextPoints).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LoyaltyScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFA61111), // Solid Deep Red
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'MEMBERSHIP TIER',
-                      style: TextStyle(
-                        fontSize: 9,
-                        letterSpacing: 1,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$tierLabel Nomad',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'ID: 8829-102',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Progress to Gold',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  '${Formatters.commas(points)} / ${Formatters.commas(nextPoints)} pts',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: Colors.white.withOpacity(0.2),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF67D4B6),
-                ), // Mint Green
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Earn ${Formatters.commas(nextPoints - points)} more points to unlock free weekly delivery.',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.white.withOpacity(0.8),
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOfferBanner() {
-    return SizedBox(
-      height: 160,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 2, // Dummy count to show horizontal scrolling capabilities
-        itemBuilder: (context, index) {
-          final isFirst = index == 0;
-          return Container(
-            width: 280,
-            margin: EdgeInsets.only(right: isFirst ? 16 : 0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: DecorationImage(
-                image: NetworkImage(
-                  isFirst
-                      ? 'https://images.unsplash.com/photo-1550450339-e7a4787a2074?q=80&w=1000&auto=format&fit=crop'
-                      : 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=1000&auto=format&fit=crop',
-                ), // Image placeholder
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
-                ),
-              ),
-              padding: const EdgeInsets.all(16),
+        if (homeCtrl.errorMessage.value.isNotEmpty &&
+            homeCtrl.branches.isEmpty &&
+            homeCtrl.featuredMenus.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFBA1A1A),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'LIMITED TIME',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+                  const Icon(
+                    Icons.cloud_off_rounded,
+                    size: 56,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    homeCtrl.errorMessage.value,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isFirst
-                        ? 'Artisan Oolong Teh Tarik\nNow Available'
-                        : 'Daily Fresh Bakes',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: homeCtrl.loadHomeData,
+                    child: const Text('Coba Lagi'),
                   ),
                 ],
               ),
             ),
           );
-        },
-      ),
+        }
+
+        final user = appState.user;
+        final selectedBranch = homeCtrl.selectedBranch.value;
+
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Container(
+                color: AppColors.primary,
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 16,
+                  left: 20,
+                  right: 20,
+                  bottom: 40,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'WELCOME BACK',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Halo, ${user.name.split(' ').first}!',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GestureDetector(
+                            onTap: () => _showBranchPicker(context, homeCtrl),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      selectedBranch?.name ?? 'Pilih Lokasi',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Transform.translate(
+                offset: const Offset(0, -25),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoyaltyScreen()),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${user.membershipTier.toUpperCase()} MEMBER',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textHint,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    Formatters.points(user.loyaltyPoints),
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Points Available',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight.withOpacity(
+                                    0.3,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.qr_code_scanner_rounded,
+                                  color: AppColors.primary,
+                                  size: 28,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: 0.65,
+                              backgroundColor: AppColors.surfaceGrey,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.primary,
+                              ),
+                              minHeight: 6,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '350 pts to Gold',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                'View Benefits >',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Curated Offers',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 140,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        image: const DecorationImage(
+                          image: NetworkImage(
+                            'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&q=80&w=800',
+                          ),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withOpacity(0.7),
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'LIMITED TIME',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Buy 1 Get 1\nAren Latte',
+                              style: TextStyle(
+                                fontSize: 20,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                child: SizedBox(
+                  height: 88,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: homeCtrl.categories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (context, index) {
+                      final category = homeCtrl.categories[index];
+                      return _CategoryButton(
+                        label: category.name,
+                        icon: homeCtrl.iconForCategory(category.name),
+                        onTap: () async {
+                          await homeCtrl.selectCategory(category.id);
+                          if (category.id != 'all') {
+                            Get.find<MainController>().changeTab(1);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Seasonal Favorites',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Get.find<MainController>().changeTab(1),
+                      child: const Text(
+                        'See All',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (homeCtrl.isRefreshingMenus.value)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              )
+            else if (homeCtrl.featuredMenus.isEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      'Menu belum tersedia untuk cabang ini',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.all(20),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.72,
+                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final item = homeCtrl.featuredMenus[index];
+                    final qty = homeCtrl.qtyForMenu(item.id);
+                    return _buildGridItem(
+                      context: context,
+                      appState: appState,
+                      homeCtrl: homeCtrl,
+                      item: item,
+                      qty: qty,
+                    );
+                  }, childCount: homeCtrl.featuredMenus.length),
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
+        );
+      }),
     );
   }
 
-  Widget _buildCategoryRow() {
-    const cats = [
-      (Icons.coffee_rounded, 'COFFEE'),
-      (Icons.local_cafe_outlined, 'TEA'),
-      (Icons.restaurant_menu_rounded, 'FOOD'),
-      (Icons.cookie_outlined, 'SNACK'),
-    ];
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: cats.map((cat) {
-        final (icon, label) = cat;
-        return GestureDetector(
-          onTap: widget.onNavigateToMenu,
-          child: Column(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBE6E2), // Light Gray/Beige
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, size: 28, color: Colors.black87),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black54,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
+  Widget _buildGridItem({
+    required BuildContext context,
+    required AppStateController appState,
+    required HomeController homeCtrl,
+    required MenuItem item,
+    required int qty,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        if (!item.isAvailable) return;
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => MenuDetailSheet(
+            item: item,
+            currentQty: qty,
+            currentNotes: '',
+            onAdd: (newQty, notes) {
+              Navigator.pop(ctx);
+              appState.addCartItem(item, newQty, notes);
+            },
           ),
         );
-      }).toList(),
-    );
-  }
-
-  Widget _buildSectionHeader(
-    String title,
-    String? action, {
-    VoidCallback? onTap,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: Colors.black87,
-          ),
-        ),
-        if (action != null)
-          GestureDetector(
-            onTap: onTap,
-            child: Text(
-              action,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFFBA1A1A),
-              ),
-            ),
-          ), // Red Color Action
-      ],
-    );
-  }
-
-  Widget _buildMenuGrid(List<MenuItem> items) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 0.75, // Disesuaikan agar card proporsional
-      children: items
-          .map(
-            (item) => _MenuCard(
-              item: item,
-              onTap: () => _openDetail(item),
-              onAdd: () => widget.onAddToCart?.call(item),
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
-// ── Menu Card ─────────────────────────────────────────────────────────────────
-
-class _MenuCard extends StatelessWidget {
-  final MenuItem item;
-  final VoidCallback onTap;
-  final VoidCallback onAdd;
-
-  const _MenuCard({
-    required this.item,
-    required this.onTap,
-    required this.onAdd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: item.isAvailable ? onTap : null,
+      },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar produk
-            Expanded(
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
-                    ),
-                    child: Container(
-                      width: double.infinity,
-                      color: AppColors.surfaceGrey,
-                      child: item.imageUrl.startsWith('http')
-                          ? Image.network(
-                              item.imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Center(
-                                child: Icon(
-                                  Icons.coffee_rounded,
-                                  size: 48,
-                                  color: AppColors.divider,
-                                ),
-                              ),
-                            )
-                          : const Center(
-                              child: Icon(
-                                Icons.coffee_rounded,
-                                size: 48,
-                                color: AppColors.divider,
-                              ),
-                            ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: 1.1,
+                    child: Image.network(
+                      item.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) {
+                        return Container(
+                          color: AppColors.surfaceGrey,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: AppColors.textHint,
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  // Tombol Favorit (Heart)
-                  Positioned(
-                    top: 8,
-                    right: 8,
+                ),
+                if (!item.isAvailable)
+                  Positioned.fill(
                     child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.favorite,
-                        size: 16,
-                        color: Colors.grey.shade300, // Abu-abu default
+                      color: Colors.white.withOpacity(0.6),
+                      alignment: Alignment.center,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'SOLD OUT',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
-            // Teks dan Tombol Add
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -585,48 +557,96 @@ class _MenuCard extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black87,
+                      color: item.isAvailable
+                          ? AppColors.textPrimary
+                          : AppColors.textHint,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Menggunakan custom styling string "RM" jika di referensi demikian,
-                      // namun tetap fleksibel menggunakan Formatter jika dibutuhkan.
-                      Text(
-                        'RM ${item.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFBA1A1A), // Red color text for price
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: item.isAvailable ? onAdd : null,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
+                      Expanded(
+                        child: Text(
+                          Formatters.currency(item.price),
+                          style: TextStyle(
+                            fontSize: 13,
                             color: item.isAvailable
-                                ? const Color(0xFF0C7D6B) // Teal Dark Color
-                                : AppColors.divider,
-                            borderRadius: BorderRadius.circular(
-                              6,
-                            ), // Bentuk sedikit kotak
+                                ? AppColors.primary
+                                : AppColors.textHint,
+                            fontWeight: FontWeight.w800,
                           ),
-                          child: const Icon(
-                            Icons.add_rounded,
-                            size: 18,
-                            color: Colors.white,
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      if (qty > 0)
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.tealLight,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${qty}x',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.teal,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        )
+                      else
+                        GestureDetector(
+                          onTap: item.isAvailable
+                              ? () {
+                                  if (item.isDrink) {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (ctx) => MenuDetailSheet(
+                                        item: item,
+                                        currentQty: 0,
+                                        currentNotes: '',
+                                        onAdd: (newQty, notes) {
+                                          Navigator.pop(ctx);
+                                          appState.addCartItem(
+                                            item,
+                                            newQty,
+                                            notes,
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  } else {
+                                    appState.addCartItem(item, 1, '');
+                                  }
+                                }
+                              : null,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: item.isAvailable
+                                  ? AppColors.teal
+                                  : AppColors.surfaceGrey,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.add_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -637,127 +657,161 @@ class _MenuCard extends StatelessWidget {
       ),
     );
   }
+
+  void _showBranchPicker(BuildContext context, HomeController homeCtrl) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Pilih Lokasi Cabang',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...homeCtrl.branches.map((b) {
+              final isSelected = homeCtrl.selectedBranch.value?.id == b.id;
+              return InkWell(
+                onTap: () async {
+                  await homeCtrl.selectBranch(b);
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  color: isSelected
+                      ? AppColors.primaryLight.withOpacity(0.2)
+                      : Colors.transparent,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.storefront_rounded,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              b.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              b.address,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: b.isOpen
+                              ? AppColors.tealLight
+                              : AppColors.surfaceGrey,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          b.isOpen ? 'Buka' : 'Tutup',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: b.isOpen
+                                ? AppColors.teal
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-// ── Branch Sheet (Tidak ada perubahan UI drastis disini, dipertahankan) ─────
+class _CategoryButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
 
-class _BranchSheet extends StatelessWidget {
-  final Branch? selected;
-  final Function(Branch) onPick;
-
-  const _BranchSheet({required this.selected, required this.onPick});
+  const _CategoryButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.divider,
-                borderRadius: BorderRadius.circular(2),
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 24, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Pilih Cabang',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...DummyData.branches.map((branch) {
-            final isSelected = selected?.id == branch.id;
-            return GestureDetector(
-              onTap: branch.isOpen ? () => onPick(branch) : null,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.tealLight : AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? AppColors.teal : AppColors.cardBorder,
-                    width: isSelected ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.storefront_rounded,
-                      size: 18,
-                      color: isSelected
-                          ? AppColors.teal
-                          : AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            branch.name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: isSelected
-                                  ? AppColors.teal
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            branch.address,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: branch.isOpen
-                            ? AppColors.tealLight
-                            : AppColors.surfaceGrey,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        branch.isOpen ? 'Buka' : 'Tutup',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: branch.isOpen
-                              ? AppColors.teal
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
+          ],
+        ),
       ),
     );
   }
