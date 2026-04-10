@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/services/supabase_service.dart';
 import '../models/order_model.dart';
+import '../models/menu_item_model.dart';
 
 class OrderRemote {
   final SupabaseClient client = SupabaseService.client;
@@ -33,7 +34,7 @@ class OrderRemote {
         .select()
         .single();
 
-    final orderId = orderRes['id']?.toString() ?? '';
+    final orderId = orderRes['id'].toString();
 
     for (final item in order.items) {
       await client.from('order_items').insert({
@@ -51,35 +52,63 @@ class OrderRemote {
   Future<List<OrderModel>> getOrdersByUser(String userId) async {
     final response = await client
         .from('orders')
-        .select()
+        .select('''
+          *,
+          branches (name),
+          order_items (
+            *,
+            menu_items (*)
+          )
+        ''')
         .eq('user_id', userId)
         .order('created_at', ascending: false);
 
-    return (response as List)
-        .map(
-          (e) => OrderModel(
-            id: e['id']?.toString() ?? '',
-            userId: e['user_id']?.toString() ?? '',
-            queueNumber: e['queue_number']?.toString() ?? '',
-            branchId: e['branch_id']?.toString() ?? '',
-            branchName: '',
-            items: const [],
-            paymentMethod: e['payment_method']?.toString() ?? '',
-            status: _parseStatus(e['status']?.toString()),
-            createdAt: e['created_at'] != null
-                ? DateTime.parse(e['created_at'].toString())
-                : DateTime.now(),
-            subtotal: _toInt(e['subtotal']),
-            discountAmount: _toInt(e['discount_amount']),
-            serviceFee: _toInt(e['service_fee']),
-            grandTotal: _toInt(e['grand_total']),
-            pointsEarned: _toInt(e['points_earned']),
-            pointsUsed: _toInt(e['points_used']),
-            orderType: e['order_type']?.toString() ?? 'dine_in',
-            notes: e['notes']?.toString(),
-          ),
-        )
-        .toList();
+    return (response as List).map((e) {
+      final itemsRaw = e['order_items'] as List? ?? [];
+
+      final items = itemsRaw.map((item) {
+        final menu = item['menu_items'];
+
+        final menuItem = MenuItem(
+          id: menu['id'].toString(),
+          branchId: menu['branch_id'].toString(),
+          categoryId: menu['category_id'].toString(),
+          name: menu['name'],
+          description: menu['description'] ?? '',
+          price: _toInt(menu['price']),
+          imageUrl: menu['image_url'] ?? '',
+          isAvailable: menu['is_available'] ?? true,
+          orderCount: _toInt(menu['order_count']),
+        );
+
+        return CartItem(
+          entryId: CartItem.entryKey(menuItem.id, item['notes'] ?? ''),
+          menuItem: menuItem,
+          qty: _toInt(item['quantity']),
+          notes: item['notes'] ?? '',
+        );
+      }).toList();
+
+      return OrderModel(
+        id: e['id'].toString(),
+        userId: e['user_id'].toString(),
+        queueNumber: e['queue_number'] ?? '',
+        branchId: e['branch_id'] ?? '',
+        branchName: e['branches']?['name'] ?? '',
+        items: items,
+        paymentMethod: e['payment_method'] ?? '',
+        status: _parseStatus(e['status']),
+        createdAt: DateTime.parse(e['created_at']),
+        subtotal: _toInt(e['subtotal']),
+        discountAmount: _toInt(e['discount_amount']),
+        serviceFee: _toInt(e['service_fee']),
+        grandTotal: _toInt(e['grand_total']),
+        pointsEarned: _toInt(e['points_earned']),
+        pointsUsed: _toInt(e['points_used']),
+        orderType: e['order_type'] ?? 'dine_in',
+        notes: e['notes'],
+      );
+    }).toList();
   }
 
   OrderStatus _parseStatus(String? value) {
@@ -92,7 +121,6 @@ class OrderRemote {
         return OrderStatus.done;
       case 'cancelled':
         return OrderStatus.cancelled;
-      case 'pending':
       default:
         return OrderStatus.pending;
     }

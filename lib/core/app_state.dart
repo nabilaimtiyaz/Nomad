@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 
-import '../data/dummy_data.dart';
 import '../data/models/branch_model.dart';
 import '../data/models/menu_item_model.dart';
 import '../data/models/order_model.dart';
@@ -8,28 +7,28 @@ import '../data/models/user_model.dart';
 import '../controllers/cart/cart_controller.dart';
 
 class AppStateController extends GetxController {
-  UserModel _user = DummyData.dummyUser;
-  UserModel get user => _user;
+  /// ======================
+  /// USER
+  /// ======================
+  UserModel? _user;
+  UserModel get user => _user!;
 
   bool _isLoggedIn = false;
   bool get isLoggedIn => _isLoggedIn;
 
-  Branch? _selectedBranch =
-      DummyData.branches.isNotEmpty ? DummyData.branches.first : null;
+  /// ======================
+  /// BRANCH
+  /// ======================
+  Branch? _selectedBranch;
   Branch? get selectedBranch => _selectedBranch;
 
   /// ======================
-  /// 🔥 CART (DEPRECATED)
+  /// CART (delegated to CartController)
   /// ======================
-  /// NOTE:
-  /// Cart sekarang pakai CartController (GetX)
-  /// Ini hanya fallback agar tidak error di file lama
   final CartController _cartController = Get.find<CartController>();
 
   List<CartItem> get cartItems => _cartController.items;
-
   int get cartTotalItems => _cartController.totalQty;
-
   int get cartTotalPrice => _cartController.subtotal;
 
   /// ======================
@@ -40,44 +39,58 @@ class AppStateController extends GetxController {
 
   final Map<String, int> _voucherUsageByCode = <String, int>{};
 
-  void setBranch(Branch branch) {
-    _selectedBranch = branch;
-    update();
-  }
-
+  /// ======================
+  /// AUTH
+  /// ======================
   void setAuthenticatedUser(UserModel user) {
     _user = user;
     _isLoggedIn = true;
     update();
   }
 
-  void updateProfileLocal({required String name, required String phone}) {
-    _user = _user.copyWith(name: name, phone: phone);
-    update();
-  }
-
-  void logoutLocal() {
+  void logout() {
     _isLoggedIn = false;
-    _user = DummyData.dummyUser;
+    _user = null;
+    _selectedBranch = null;
     _orders.clear();
     _voucherUsageByCode.clear();
-
-    /// clear cart dari controller
     _cartController.clearCart();
-
     update();
-  }
-
-  void updateProfile({required String name, required String phone}) {
-    updateProfileLocal(name: name, phone: phone);
-  }
-
-  void logout() {
-    logoutLocal();
   }
 
   /// ======================
-  /// 🔥 CART (DEPRECATED API)
+  /// BRANCH
+  /// ======================
+  void setBranch(Branch branch) {
+    _selectedBranch = branch;
+    update();
+  }
+
+  /// ======================
+  /// PROFILE
+  /// ======================
+  void updateProfileLocal({
+    required String name,
+    required String phone,
+  }) {
+    if (_user == null) return;
+
+    _user = _user!.copyWith(
+      name: name,
+      phone: phone,
+    );
+    update();
+  }
+
+  void updateProfile({
+    required String name,
+    required String phone,
+  }) {
+    updateProfileLocal(name: name, phone: phone);
+  }
+
+  /// ======================
+  /// CART (legacy delegate)
   /// ======================
   void addCartItem(MenuItem item, int qty, String notes) {
     _cartController.addItem(item, qty, notes);
@@ -85,8 +98,9 @@ class AppStateController extends GetxController {
   }
 
   void updateCartItemQty(String entryId, int delta) {
-    final current = _cartController.items
-        .firstWhereOrNull((e) => e.entryId == entryId);
+    final current = _cartController.items.firstWhereOrNull(
+      (e) => e.entryId == entryId,
+    );
 
     if (current == null) return;
 
@@ -105,7 +119,7 @@ class AppStateController extends GetxController {
   }
 
   /// ======================
-  /// ORDERS
+  /// ORDER
   /// ======================
   void addOrder(OrderModel order) {
     _orders.insert(0, order);
@@ -121,7 +135,6 @@ class AppStateController extends GetxController {
     }
 
     _cartController.clearCart();
-
     update();
   }
 
@@ -154,12 +167,12 @@ class AppStateController extends GetxController {
   /// LOYALTY
   /// ======================
   void _earnPoints(int points) {
-    if (points <= 0) return;
+    if (_user == null || points <= 0) return;
 
-    final newTotalEarned = _user.totalEarnedPoints + points;
-    final newBalance = _user.loyaltyPoints + points;
+    final newTotalEarned = _user!.totalEarnedPoints + points;
+    final newBalance = _user!.loyaltyPoints + points;
 
-    _user = _user.copyWith(
+    _user = _user!.copyWith(
       loyaltyPoints: newBalance,
       totalEarnedPoints: newTotalEarned,
       membershipTier: UserModel.getTier(newTotalEarned),
@@ -167,21 +180,25 @@ class AppStateController extends GetxController {
   }
 
   void _deductPoints(int points) {
-    if (points <= 0) return;
+    if (_user == null || points <= 0) return;
 
-    final updatedBalance = (_user.loyaltyPoints - points).clamp(0, 1 << 31);
-    _user = _user.copyWith(loyaltyPoints: updatedBalance);
+    final updatedBalance = (_user!.loyaltyPoints - points).clamp(0, 1 << 31);
+    _user = _user!.copyWith(loyaltyPoints: updatedBalance);
   }
 
   bool redeemPoints(int points) {
-    if (_user.loyaltyPoints < points) return false;
+    if (_user == null) return false;
+    if (_user!.loyaltyPoints < points) return false;
+
     _deductPoints(points);
     update();
     return true;
   }
 
   double get pointMultiplier {
-    switch (_user.membershipTier) {
+    if (_user == null) return 1.0;
+
+    switch (_user!.membershipTier) {
       case 'platinum':
         return 2.0;
       case 'gold':

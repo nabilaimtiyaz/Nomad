@@ -4,9 +4,6 @@ import '../../data/models/menu_item_model.dart';
 class CartController extends GetxController {
   final cartItems = <CartItem>[].obs;
 
-  /// ======================
-  /// GETTERS
-  /// ======================
   List<CartItem> get items => cartItems;
 
   int get subtotal {
@@ -35,14 +32,23 @@ class CartController extends GetxController {
     }
   }
 
+  /// ======================
+  /// SIMPLE ADD
+  /// ======================
   void addSimple(MenuItem item) {
     addItem(item, 1, '');
   }
 
+  /// ======================
+  /// REMOVE
+  /// ======================
   void removeItem(String entryId) {
     cartItems.removeWhere((e) => e.entryId == entryId);
   }
 
+  /// ======================
+  /// UPDATE QTY
+  /// ======================
   void updateQty(String entryId, int newQty) {
     final index = cartItems.indexWhere((e) => e.entryId == entryId);
     if (index < 0) return;

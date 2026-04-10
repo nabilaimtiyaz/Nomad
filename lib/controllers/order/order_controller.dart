@@ -1,62 +1,93 @@
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/app_state.dart';
 import '../../core/routes/app_routes.dart';
 import '../../data/datasources/order_remote.dart';
-import '../../data/datasources/voucher_remote.dart';
 import '../../data/models/order_model.dart';
 import '../../data/repositories/order_repository.dart';
-import '../../data/repositories/voucher_repository.dart';
 import '../cart/cart_controller.dart';
+import '../../core/app_state.dart';
 
 class OrderController extends GetxController {
   final cart = Get.find<CartController>();
   final appState = Get.find<AppStateController>();
 
   final orderRepo = OrderRepository(OrderRemote());
-  final voucherRepo = VoucherRepository(VoucherRemote());
+
+  final SupabaseClient client = Supabase.instance.client;
 
   final isLoading = false.obs;
 
-  final voucherCode = ''.obs;
-  final discountAmount = 0.obs;
+  final orders = <OrderModel>[].obs;
+
+  /// 🔥 ORDER ACTIVE (UNTUK STATUS SCREEN)
+  final currentOrder = Rxn<OrderModel>();
+
+  RealtimeChannel? _channel;
 
   /// ======================
-  /// APPLY VOUCHER (FIX LOGIC)
+  /// FETCH ORDERS
   /// ======================
-  Future<void> applyVoucher(String code) async {
-    final data = await voucherRepo.validateVoucher(code);
-
-    if (data == null) {
-      Get.snackbar("Error", "Voucher tidak ditemukan");
-      return;
-    }
-
-    final minOrder = data['min_order_value'] ?? 0;
-    final discount = data['discount_value'] ?? 0;
-    final maxDiscount = data['max_discount'] ?? discount;
-
-    if (cart.subtotal < minOrder) {
-      Get.snackbar("Error", "Minimal belanja belum terpenuhi");
-      return;
-    }
-
-    int finalDiscount = discount;
-
-    if (maxDiscount != null) {
-      finalDiscount = finalDiscount.clamp(0, maxDiscount) as int;
-    }
-
-    voucherCode.value = code;
-    discountAmount.value = finalDiscount;
+  Future<void> fetchOrders() async {
+    final userId = appState.user.id;
+    final result = await orderRepo.getOrders(userId);
+    orders.assignAll(result);
   }
 
   /// ======================
-  /// CHECKOUT (FIX TOTAL)
+  /// LISTEN REALTIME STATUS
+  /// ======================
+  void listenOrder(String orderId) {
+    _channel?.unsubscribe();
+
+    _channel = client.channel('orders-$orderId');
+
+    _channel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: orderId,
+          ),
+          callback: (payload) {
+            final data = payload.newRecord;
+
+            final updatedStatus = _parseStatus(data['status']);
+
+            if (currentOrder.value != null) {
+              currentOrder.value = currentOrder.value!.copyWith(
+                status: updatedStatus,
+              );
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  OrderStatus _parseStatus(String? value) {
+    switch (value) {
+      case 'confirmed':
+        return OrderStatus.confirmed;
+      case 'ready':
+        return OrderStatus.ready;
+      case 'done':
+        return OrderStatus.done;
+      case 'cancelled':
+        return OrderStatus.cancelled;
+      default:
+        return OrderStatus.pending;
+    }
+  }
+
+  /// ======================
+  /// CHECKOUT
   /// ======================
   Future<void> checkout() async {
-    if (cart.cartItems.isEmpty) {
-      Get.snackbar("Error", "Keranjang masih kosong");
+    if (cart.isEmpty) {
+      Get.snackbar("Error", "Keranjang kosong");
       return;
     }
 
@@ -67,10 +98,7 @@ class OrderController extends GetxController {
       final branch = appState.selectedBranch!;
 
       final subtotal = cart.subtotal;
-      final discount = discountAmount.value;
-      final serviceFee = 0; // sesuai rule kamu
-
-      final grandTotal = subtotal - discount + serviceFee;
+      final grandTotal = subtotal;
 
       final order = OrderModel(
         id: '',
@@ -83,25 +111,30 @@ class OrderController extends GetxController {
         status: OrderStatus.pending,
         createdAt: DateTime.now(),
         subtotal: subtotal,
-        discountAmount: discount,
-        serviceFee: serviceFee,
+        discountAmount: 0,
+        serviceFee: 0,
         grandTotal: grandTotal,
         pointsEarned: appState.calculateEarnedPoints(subtotal),
-        pointsUsed: 0,
-        orderType: 'dine_in',
-        voucherCode: voucherCode.value,
       );
 
       final saved = await orderRepo.createOrder(order);
 
-      appState.addOrder(saved);
+      /// 🔥 SET CURRENT ORDER
+      currentOrder.value = saved;
+
+      /// 🔥 START LISTEN
+      listenOrder(saved.id);
+
       cart.clearCart();
 
       Get.toNamed(AppRoutes.orderStatus, arguments: saved);
-    } catch (e) {
-      Get.snackbar("Error", e.toString());
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void goHome() {
+    _channel?.unsubscribe();
+    Get.offAllNamed(AppRoutes.home);
   }
 }

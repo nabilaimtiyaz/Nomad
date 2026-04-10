@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../controllers/cart/cart_controller.dart';
 import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../controllers/home/home_controller.dart';
 import '../../../controllers/home/main_controller.dart';
-import '../../../data/models/branch_model.dart';
 import '../../../data/models/menu_item_model.dart';
 import '../loyalty/loyalty_screen.dart';
 import '../menu/menu_detail_sheet.dart';
@@ -18,6 +18,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final homeCtrl = Get.find<HomeController>();
     final appState = Get.find<AppStateController>();
+    final cartCtrl = Get.find<CartController>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -224,9 +225,7 @@ class HomeScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryLight.withOpacity(
-                                    0.3,
-                                  ),
+                                  color: AppColors.primaryLight.withOpacity(0.3),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -445,17 +444,19 @@ class HomeScreen extends StatelessWidget {
                     crossAxisSpacing: 16,
                     childAspectRatio: 0.72,
                   ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final item = homeCtrl.featuredMenus[index];
-                    final qty = homeCtrl.qtyForMenu(item.id);
-                    return _buildGridItem(
-                      context: context,
-                      appState: appState,
-                      homeCtrl: homeCtrl,
-                      item: item,
-                      qty: qty,
-                    );
-                  }, childCount: homeCtrl.featuredMenus.length),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = homeCtrl.featuredMenus[index];
+                      final qty = cartCtrl.qtyForMenu(item.id);
+                      return _buildGridItem(
+                        context: context,
+                        cartCtrl: cartCtrl,
+                        item: item,
+                        qty: qty,
+                      );
+                    },
+                    childCount: homeCtrl.featuredMenus.length,
+                  ),
                 ),
               ),
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
@@ -467,8 +468,7 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildGridItem({
     required BuildContext context,
-    required AppStateController appState,
-    required HomeController homeCtrl,
+    required CartController cartCtrl,
     required MenuItem item,
     required int qty,
   }) {
@@ -485,7 +485,7 @@ class HomeScreen extends StatelessWidget {
             currentNotes: '',
             onAdd: (newQty, notes) {
               Navigator.pop(ctx);
-              appState.addCartItem(item, newQty, notes);
+              cartCtrl.addItem(item, newQty, notes);
             },
           ),
         );
@@ -510,6 +510,12 @@ class HomeScreen extends StatelessWidget {
                     child: Image.network(
                       item.imageUrl,
                       fit: BoxFit.cover,
+                      loadingBuilder: (_, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        );
+                      },
                       errorBuilder: (_, __, ___) {
                         return Container(
                           color: AppColors.surfaceGrey,
@@ -618,16 +624,12 @@ class HomeScreen extends StatelessWidget {
                                         currentNotes: '',
                                         onAdd: (newQty, notes) {
                                           Navigator.pop(ctx);
-                                          appState.addCartItem(
-                                            item,
-                                            newQty,
-                                            notes,
-                                          );
+                                          cartCtrl.addItem(item, newQty, notes);
                                         },
                                       ),
                                     );
                                   } else {
-                                    appState.addCartItem(item, 1, '');
+                                    cartCtrl.addItem(item, 1, '');
                                   }
                                 }
                               : null,

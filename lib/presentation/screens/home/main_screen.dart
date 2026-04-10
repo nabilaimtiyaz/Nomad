@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/formatters.dart';
-import '../../../controllers/home/main_controller.dart';
-import '../../../controllers/cart/cart_controller.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../controllers/cart/cart_controller.dart';
+import '../../../controllers/home/main_controller.dart';
 import 'home_screen.dart';
 import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
@@ -16,7 +17,6 @@ class MainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainCtrl = Get.find<MainController>();
-    final cartCtrl = Get.find<CartController>();
 
     final screens = [
       const HomeScreen(),
@@ -36,38 +36,36 @@ class MainScreen extends StatelessWidget {
       builder: (_) => Scaffold(
         backgroundColor: AppColors.background,
         body: screens[mainCtrl.tabIndex],
+        floatingActionButton: Obx(() {
+          final cart = Get.find<CartController>();
+          final showFab =
+              (mainCtrl.tabIndex == 0 || mainCtrl.tabIndex == 1) &&
+              !cart.isEmpty;
 
-        // FAB cart — tampil di tab Home dan Menu saja
-        floatingActionButton: GetBuilder<CartController>(
-          builder: (cart) {
-            final showFab =
-                (mainCtrl.tabIndex == 0 || mainCtrl.tabIndex == 1) &&
-                !cart.isEmpty;
-            if (!showFab) return const SizedBox.shrink();
-            return FloatingActionButton.extended(
-              onPressed: () => Get.toNamed(AppRoutes.cart),
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              icon: const Icon(
-                Icons.shopping_bag_outlined,
+          if (!showFab) return const SizedBox.shrink();
+
+          return FloatingActionButton.extended(
+            onPressed: () => Get.toNamed(AppRoutes.cart),
+            backgroundColor: AppColors.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            icon: const Icon(
+              Icons.shopping_bag_outlined,
+              color: Colors.white,
+              size: 20,
+            ),
+            label: Text(
+              '${cart.totalQty} Item  •  ${Formatters.currency(cart.subtotal)}',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
                 color: Colors.white,
-                size: 20,
               ),
-              label: Text(
-                '${cart.totalQty} Item  •  ${Formatters.currency(cart.subtotal)}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-
         bottomNavigationBar: _buildBottomNav(mainCtrl, tabs),
       ),
     );
@@ -87,6 +85,7 @@ class MainScreen extends StatelessWidget {
               final active = ctrl.tabIndex == i;
               final (label, iconOff, iconOn) =
                   tabs[i] as (String, IconData, IconData);
+
               return Expanded(
                 child: GestureDetector(
                   onTap: () => ctrl.changeTab(i),
