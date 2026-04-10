@@ -1,28 +1,24 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../core/services/supabase_service.dart';
 import '../models/user_model.dart';
 
-class ProfilRemote {
-  final SupabaseClient client;
-
-  ProfilRemote({SupabaseClient? client}) : client = client ?? SupabaseService.client;
-
-  Future<UserModel> updateProfile({
-    required String authId,
+class ProfileRemote {
+  Future<UserModel?> updateProfile({
+    required String userId,
     required String name,
     required String phone,
   }) async {
-    final data = await client
+    final response = await SupabaseService.client
         .from('users')
         .update({
           'name': name,
           'phone': phone,
         })
-        .eq('auth_id', authId)
+        .eq('id', userId)
         .select()
-        .single();
+        .maybeSingle();
 
-    return UserModel.fromMap(Map<String, dynamic>.from(data));
+    if (response == null) return null;
+
+    return UserModel.fromMap(response);
   }
 }

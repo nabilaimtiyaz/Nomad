@@ -15,4 +15,20 @@ class MenuRepository {
       categoryId: categoryId,
     );
   }
+
+  Future<List<Category>> getCategories() {
+    return remote.getCategories();
+  }
+
+  Future<List<MenuItem>> getFeaturedMenus({
+    required String branchId,
+    String? categoryId,
+    int limit = 4,
+  }) {
+    return remote.getFeaturedMenus(
+      branchId: branchId,
+      categoryId: categoryId,
+      limit: limit,
+    );
+  }
 }

@@ -50,9 +50,16 @@ class HomeController extends GetxController {
       categories.assignAll(fetchedCategories);
 
       if (branches.isNotEmpty) {
-        final initialBranch = branches.first;
+        final currentBranchId = appState.selectedBranch?.id;
+        final initialBranch = branches.firstWhereOrNull(
+              (branch) => branch.id == currentBranchId,
+            ) ??
+            branches.first;
+
         selectedBranch.value = initialBranch;
         appState.setBranch(initialBranch);
+      } else {
+        selectedBranch.value = null;
       }
 
       await loadFeaturedMenus();
@@ -72,6 +79,7 @@ class HomeController extends GetxController {
 
     try {
       isRefreshingMenus.value = true;
+      errorMessage.value = '';
 
       final menus = await menuRepository.getFeaturedMenus(
         branchId: branch.id,
@@ -89,6 +97,8 @@ class HomeController extends GetxController {
   }
 
   Future<void> selectBranch(Branch branch) async {
+    if (!branch.isOpen) return;
+
     selectedBranch.value = branch;
     appState.setBranch(branch);
     await loadFeaturedMenus();

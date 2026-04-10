@@ -1,84 +1,60 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../core/app_state.dart';
-import '../../core/routes/app_routes.dart';
-import '../../core/utils/validators.dart';
-import '../../data/datasources/auth_remote.dart';
 import '../../data/datasources/profil_remote.dart';
-import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/profil_repository.dart';
 
 class ProfileController extends GetxController {
-  final AppStateController _appState = Get.find<AppStateController>();
-  final ProfilRepository _profilRepository = ProfilRepository(ProfilRemote());
-  final AuthRepository _authRepository = AuthRepository(AuthRemote());
+  final ProfileRepository _repository = ProfileRepository(ProfileRemote());
 
-  final formKey = GlobalKey<FormState>();
-  late final TextEditingController nameCtrl;
-  late final TextEditingController phoneCtrl;
+  final AppStateController appState = Get.find<AppStateController>();
 
   final isLoading = false.obs;
-  final hasChanged = false.obs;
+  final errorMessage = ''.obs;
+  final successMessage = ''.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-    nameCtrl = TextEditingController(text: _appState.user.name);
-    phoneCtrl = TextEditingController(text: _appState.user.phone);
-    nameCtrl.addListener(_onChanged);
-    phoneCtrl.addListener(_onChanged);
-  }
-
-  @override
-  void onClose() {
-    nameCtrl.dispose();
-    phoneCtrl.dispose();
-    super.onClose();
-  }
-
-  void _onChanged() {
-    hasChanged.value = true;
-  }
-
-  String? validateName(String? value) => Validators.name(value);
-  String? validatePhone(String? value) => Validators.phone(value);
-
-  Future<void> save() async {
-    if (!(formKey.currentState?.validate() ?? false)) return;
-
+  Future<void> updateProfile({
+    required String name,
+    required String phone,
+  }) async {
     try {
       isLoading.value = true;
+      errorMessage.value = '';
+      successMessage.value = '';
 
-      final updatedUser = await _profilRepository.updateProfile(
-        authId: _appState.user.id,
-        name: nameCtrl.text.trim(),
-        phone: phoneCtrl.text.trim(),
+      final user = appState.user;
+
+      // 🔴 VALIDASI DASAR
+      if (name.trim().isEmpty) {
+        errorMessage.value = 'Nama tidak boleh kosong';
+        return;
+      }
+
+      if (phone.trim().isEmpty) {
+        errorMessage.value = 'Nomor HP tidak boleh kosong';
+        return;
+      }
+
+      // 🔥 UPDATE KE DATABASE
+      final updatedUser = await _repository.updateProfile(
+        userId: user.id,
+        name: name.trim(),
+        phone: phone.trim(),
       );
 
-      _appState.setAuthenticatedUser(updatedUser);
-      hasChanged.value = false;
+      if (updatedUser == null) {
+        errorMessage.value = 'Gagal memperbarui profil';
+        return;
+      }
 
-      Get.snackbar(
-        'Berhasil',
-        'Profil berhasil diperbarui',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      Get.back();
-    } catch (error) {
-      Get.snackbar(
-        'Gagal',
-        error.toString().replaceFirst('Exception: ', ''),
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      // 🔥 UPDATE LOCAL STATE (INI YANG SEBELUMNYA BUG)
+      appState.setAuthenticatedUser(updatedUser);
+
+      successMessage.value = 'Profil berhasil diperbarui';
+    } catch (e) {
+      errorMessage.value = e.toString().replaceFirst('Exception: ', '');
     } finally {
       isLoading.value = false;
     }
-  }
-
-  Future<void> logout() async {
-    await _authRepository.logout();
-    _appState.logoutLocal();
-    Get.offAllNamed(AppRoutes.login);
   }
 }

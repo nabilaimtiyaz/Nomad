@@ -1,16 +1,20 @@
 import '../datasources/profil_remote.dart';
 import '../models/user_model.dart';
 
-class ProfilRepository {
-  final ProfilRemote remote;
+class ProfileRepository {
+  final ProfileRemote remote;
 
-  ProfilRepository(this.remote);
+  ProfileRepository(this.remote);
 
-  Future<UserModel> updateProfile({
-    required String authId,
+  Future<UserModel?> updateProfile({
+    required String userId,
     required String name,
     required String phone,
   }) {
-    return remote.updateProfile(authId: authId, name: name, phone: phone);
+    return remote.updateProfile(
+      userId: userId,
+      name: name,
+      phone: phone,
+    );
   }
 }

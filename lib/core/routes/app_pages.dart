@@ -78,16 +78,28 @@ class AppPages {
             Get.put(CartController());
           }
         }),
+        BindingsBuilder(() {
+          if (!Get.isRegistered<OrderController>()) {
+            Get.put(OrderController());
+          }
+        }),
       ],
     ),
     GetPage(
       name: AppRoutes.cart,
       page: () => const CartScreen(),
-      binding: BindingsBuilder(() {
-        if (!Get.isRegistered<CartController>()) {
-          Get.put(CartController());
-        }
-      }),
+      bindings: [
+        BindingsBuilder(() {
+          if (!Get.isRegistered<CartController>()) {
+            Get.put(CartController());
+          }
+        }),
+        BindingsBuilder(() {
+          if (!Get.isRegistered<OrderController>()) {
+            Get.put(OrderController());
+          }
+        }),
+      ],
     ),
     GetPage(
       name: AppRoutes.orderStatus,

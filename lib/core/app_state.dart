@@ -1,47 +1,32 @@
 import 'package:get/get.dart';
 
+import '../controllers/cart/cart_controller.dart';
 import '../data/models/branch_model.dart';
 import '../data/models/menu_item_model.dart';
 import '../data/models/order_model.dart';
 import '../data/models/user_model.dart';
-import '../controllers/cart/cart_controller.dart';
 
 class AppStateController extends GetxController {
-  /// ======================
-  /// USER
-  /// ======================
   UserModel? _user;
   UserModel get user => _user!;
 
   bool _isLoggedIn = false;
   bool get isLoggedIn => _isLoggedIn;
 
-  /// ======================
-  /// BRANCH
-  /// ======================
   Branch? _selectedBranch;
   Branch? get selectedBranch => _selectedBranch;
 
-  /// ======================
-  /// CART (delegated to CartController)
-  /// ======================
-  final CartController _cartController = Get.find<CartController>();
+  CartController get _cartController => Get.find<CartController>();
 
   List<CartItem> get cartItems => _cartController.items;
   int get cartTotalItems => _cartController.totalQty;
   int get cartTotalPrice => _cartController.subtotal;
 
-  /// ======================
-  /// ORDERS
-  /// ======================
   final List<OrderModel> _orders = <OrderModel>[];
   List<OrderModel> get orders => List.unmodifiable(_orders);
 
   final Map<String, int> _voucherUsageByCode = <String, int>{};
 
-  /// ======================
-  /// AUTH
-  /// ======================
   void setAuthenticatedUser(UserModel user) {
     _user = user;
     _isLoggedIn = true;
@@ -54,21 +39,19 @@ class AppStateController extends GetxController {
     _selectedBranch = null;
     _orders.clear();
     _voucherUsageByCode.clear();
-    _cartController.clearCart();
+
+    if (Get.isRegistered<CartController>()) {
+      _cartController.clearCart();
+    }
+
     update();
   }
 
-  /// ======================
-  /// BRANCH
-  /// ======================
   void setBranch(Branch branch) {
     _selectedBranch = branch;
     update();
   }
 
-  /// ======================
-  /// PROFILE
-  /// ======================
   void updateProfileLocal({
     required String name,
     required String phone,
@@ -89,9 +72,6 @@ class AppStateController extends GetxController {
     updateProfileLocal(name: name, phone: phone);
   }
 
-  /// ======================
-  /// CART (legacy delegate)
-  /// ======================
   void addCartItem(MenuItem item, int qty, String notes) {
     _cartController.addItem(item, qty, notes);
     update();
@@ -118,9 +98,6 @@ class AppStateController extends GetxController {
     update();
   }
 
-  /// ======================
-  /// ORDER
-  /// ======================
   void addOrder(OrderModel order) {
     _orders.insert(0, order);
 
@@ -150,9 +127,6 @@ class AppStateController extends GetxController {
     return _orders.where((order) => order.id == id).firstOrNull;
   }
 
-  /// ======================
-  /// VOUCHER
-  /// ======================
   int getUserVoucherUsageCount(String code) {
     return _voucherUsageByCode[code.trim().toUpperCase()] ?? 0;
   }
@@ -163,9 +137,6 @@ class AppStateController extends GetxController {
     update();
   }
 
-  /// ======================
-  /// LOYALTY
-  /// ======================
   void _earnPoints(int points) {
     if (_user == null || points <= 0) return;
 

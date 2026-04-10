@@ -1,8 +1,15 @@
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/app_state.dart';
 import '../../core/routes/app_routes.dart';
+import '../../data/datasources/auth_remote.dart';
+import '../../data/repositories/auth_repository.dart';
 
 class SplashController extends GetxController {
+  final AuthRepository _authRepository = AuthRepository(AuthRemote());
+  final AppStateController _appState = Get.find<AppStateController>();
+
   @override
   void onReady() {
     super.onReady();
@@ -11,7 +18,6 @@ class SplashController extends GetxController {
 
   Future<void> _bootstrap() async {
     try {
-      // kasih jeda kecil biar animasi splash tetap sempat tampil
       await Future.delayed(const Duration(milliseconds: 2600));
 
       if (isClosed) return;
@@ -19,10 +25,16 @@ class SplashController extends GetxController {
       final session = Supabase.instance.client.auth.currentSession;
 
       if (session != null && session.user != null) {
-        Get.offAllNamed(AppRoutes.home);
-      } else {
-        Get.offAllNamed(AppRoutes.login);
+        final user = await _authRepository.getLoggedInUser();
+
+        if (user != null) {
+          _appState.setAuthenticatedUser(user);
+          Get.offAllNamed(AppRoutes.home);
+          return;
+        }
       }
+
+      Get.offAllNamed(AppRoutes.login);
     } catch (_) {
       if (!isClosed) {
         Get.offAllNamed(AppRoutes.login);
