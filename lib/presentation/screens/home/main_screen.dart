@@ -1,63 +1,72 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../controllers/cart/cart_controller.dart';
+import '../../../controllers/home/main_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../controllers/cart/cart_controller.dart';
-import '../../../controllers/home/main_controller.dart';
-import 'home_screen.dart';
 import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
 import '../profile/profile_screen.dart';
+import 'home_screen.dart';
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final mainCtrl = Get.find<MainController>();
+    final MainController mainCtrl = Get.isRegistered<MainController>()
+        ? Get.find<MainController>()
+        : Get.put(MainController(), permanent: true);
 
-    final screens = [
-      const HomeScreen(),
-      const MenuScreen(),
-      const OrderHistoryScreen(),
-      const ProfileScreen(),
+    final screens = const [
+      HomeScreen(),
+      MenuScreen(),
+      OrderHistoryScreen(),
+      ProfileScreen(),
     ];
 
     const tabs = [
       ('Home', Icons.home_outlined, Icons.home_rounded),
       ('Menu', Icons.restaurant_menu_rounded, Icons.restaurant_menu_rounded),
-      ('History', Icons.receipt_long_outlined, Icons.receipt_long_rounded),
+      ('Orders', Icons.receipt_long_outlined, Icons.receipt_long_rounded),
       ('Profile', Icons.person_outline_rounded, Icons.person_rounded),
     ];
 
     return GetBuilder<MainController>(
-      builder: (_) => Scaffold(
-        backgroundColor: AppColors.background,
-        body: screens[mainCtrl.tabIndex],
-        floatingActionButton: Obx(() {
-          final cart = Get.find<CartController>();
-          final showBadge =
-              (mainCtrl.tabIndex == 0 || mainCtrl.tabIndex == 1) &&
-              !cart.isEmpty;
+      init: mainCtrl,
+      builder: (mainCtrl) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: screens[mainCtrl.tabIndex],
+          floatingActionButton: GetBuilder<CartController>(
+            builder: (cart) {
+              final shouldShow =
+                  (mainCtrl.tabIndex == 0 || mainCtrl.tabIndex == 1) &&
+                  cart.cartItems.isNotEmpty;
 
-          if (!showBadge) return const SizedBox.shrink();
+              if (!shouldShow) return const SizedBox.shrink();
 
-          return _FloatingCartBadge(
-            itemCount: cart.totalQty,
-            totalLabel: Formatters.currency(cart.subtotal),
-            onTap: () => Get.toNamed(AppRoutes.cart),
-          );
-        }),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        bottomNavigationBar: _buildBottomNav(mainCtrl, tabs),
-      ),
+              return _FloatingCartBadge(
+                itemCount: cart.totalQty,
+                totalLabel: Formatters.currency(cart.subtotal),
+                onTap: () => Get.toNamed(AppRoutes.cart),
+              );
+            },
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          bottomNavigationBar: _buildBottomNav(mainCtrl, tabs),
+        );
+      },
     );
   }
 
-  Widget _buildBottomNav(MainController ctrl, List tabs) {
+  Widget _buildBottomNav(
+    MainController ctrl,
+    List<(String, IconData, IconData)> tabs,
+  ) {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
@@ -69,8 +78,7 @@ class MainScreen extends StatelessWidget {
           child: Row(
             children: List.generate(tabs.length, (i) {
               final active = ctrl.tabIndex == i;
-              final (label, iconOff, iconOn) =
-                  tabs[i] as (String, IconData, IconData);
+              final (label, iconOff, iconOn) = tabs[i];
 
               return Expanded(
                 child: GestureDetector(
@@ -128,6 +136,7 @@ class _FloatingCartBadge extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Container(
+          constraints: const BoxConstraints(minWidth: 178),
           height: 64,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
@@ -165,7 +174,7 @@ class _FloatingCartBadge extends StatelessWidget {
                     top: -6,
                     right: -6,
                     child: Container(
-                      width: 22,
+                      constraints: const BoxConstraints(minWidth: 22),
                       height: 22,
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       decoration: BoxDecoration(
@@ -179,7 +188,7 @@ class _FloatingCartBadge extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -187,22 +196,28 @@ class _FloatingCartBadge extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Lihat Cart',
-                    style: AppTextStyles.heading3.copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$itemCount item • $totalLabel',
-                    style: AppTextStyles.caption.copyWith(fontSize: 11),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Lihat Cart',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.heading3.copyWith(fontSize: 14),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$itemCount item • $totalLabel',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               const Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 14,

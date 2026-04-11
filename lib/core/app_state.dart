@@ -52,23 +52,22 @@ class AppStateController extends GetxController {
     update();
   }
 
-  void updateProfileLocal({
-    required String name,
-    required String phone,
-  }) {
-    if (_user == null) return;
+  void setDefaultBranchIfNeeded(List<Branch> branches) {
+    if (_selectedBranch != null) return;
+    if (branches.isEmpty) return;
 
-    _user = _user!.copyWith(
-      name: name,
-      phone: phone,
-    );
+    _selectedBranch = branches.first;
     update();
   }
 
-  void updateProfile({
-    required String name,
-    required String phone,
-  }) {
+  void updateProfileLocal({required String name, required String phone}) {
+    if (_user == null) return;
+
+    _user = _user!.copyWith(name: name, phone: phone);
+    update();
+  }
+
+  void updateProfile({required String name, required String phone}) {
     updateProfileLocal(name: name, phone: phone);
   }
 

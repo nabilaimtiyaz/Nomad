@@ -16,8 +16,8 @@ class HomeController extends GetxController {
   HomeController({
     BranchRepository? branchRepository,
     MenuRepository? menuRepository,
-  })  : branchRepository = branchRepository ?? BranchRepository(BranchRemote()),
-        menuRepository = menuRepository ?? MenuRepository(MenuRemote());
+  }) : branchRepository = branchRepository ?? BranchRepository(BranchRemote()),
+       menuRepository = menuRepository ?? MenuRepository(MenuRemote());
 
   final AppStateController appState = Get.find<AppStateController>();
 
@@ -49,25 +49,51 @@ class HomeController extends GetxController {
       branches.assignAll(fetchedBranches);
       categories.assignAll(fetchedCategories);
 
-      if (branches.isNotEmpty) {
-        final currentBranchId = appState.selectedBranch?.id;
-        final initialBranch = branches.firstWhereOrNull(
-              (branch) => branch.id == currentBranchId,
-            ) ??
-            branches.first;
-
-        selectedBranch.value = initialBranch;
-        appState.setBranch(initialBranch);
-      } else {
-        selectedBranch.value = null;
-      }
-
+      _setInitialBranch();
       await loadFeaturedMenus();
     } catch (e) {
       errorMessage.value = e.toString().replaceFirst('Exception: ', '');
+      featuredMenus.clear();
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void _setInitialBranch() {
+    if (branches.isEmpty) {
+      selectedBranch.value = null;
+      return;
+    }
+
+    final savedBranchId = appState.selectedBranch?.id;
+
+    if (savedBranchId != null && savedBranchId.isNotEmpty) {
+      final savedBranch = branches.firstWhereOrNull(
+        (branch) => branch.id == savedBranchId,
+      );
+
+      if (savedBranch != null) {
+        selectedBranch.value = savedBranch;
+        appState.setBranch(savedBranch);
+        return;
+      }
+    }
+
+    final defaultBranch = _resolveDefaultBranch(branches) ?? branches.first;
+
+    selectedBranch.value = defaultBranch;
+    appState.setBranch(defaultBranch);
+  }
+
+  Branch? _resolveDefaultBranch(List<Branch> allBranches) {
+    return allBranches.firstWhereOrNull((branch) {
+      final name = branch.name.toLowerCase();
+      final address = branch.address.toLowerCase();
+
+      return name.contains('biola') ||
+          address.contains('jl. biola') ||
+          address.contains('prevab');
+    });
   }
 
   Future<void> loadFeaturedMenus() async {
@@ -111,32 +137,32 @@ class HomeController extends GetxController {
 
   int qtyForMenu(String menuId) {
     int total = 0;
+
     for (final item in appState.cartItems) {
       if (item.menuItem.id == menuId) {
         total += item.qty;
       }
     }
+
     return total;
   }
 
   IconData iconForCategory(String categoryName) {
-    final name = categoryName.toLowerCase();
+    final name = categoryName.trim().toLowerCase();
 
-    if (name.contains('coffee') || name.contains('kopi')) {
+    if (name == 'drink' || name.contains('coffee') || name.contains('tea')) {
       return Icons.local_cafe_rounded;
     }
-    if (name.contains('tea') || name.contains('teh')) {
-      return Icons.emoji_food_beverage_rounded;
-    }
-    if (name.contains('food') || name.contains('makanan')) {
+    if (name == 'food') {
       return Icons.fastfood_rounded;
     }
-    if (name.contains('snack')) {
+    if (name == 'snack') {
       return Icons.cookie_rounded;
     }
-    if (name.contains('dessert')) {
+    if (name == 'dessert') {
       return Icons.cake_rounded;
     }
+
     return Icons.restaurant_menu_rounded;
   }
 }

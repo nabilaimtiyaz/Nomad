@@ -1,42 +1,95 @@
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/app_state.dart';
 import '../../core/routes/app_routes.dart';
 import '../../data/datasources/order_remote.dart';
+import '../../data/models/menu_item_model.dart';
 import '../../data/models/order_model.dart';
 import '../../data/repositories/order_repository.dart';
 import '../cart/cart_controller.dart';
-import '../../core/app_state.dart';
 
 class OrderController extends GetxController {
   final cart = Get.find<CartController>();
   final appState = Get.find<AppStateController>();
 
   final orderRepo = OrderRepository(OrderRemote());
-
   final SupabaseClient client = Supabase.instance.client;
 
-  final isLoading = false.obs;
+  bool isLoading = false;
+  List<OrderModel> orders = [];
+  OrderModel? currentOrder;
 
-  final orders = <OrderModel>[].obs;
-
-  /// 🔥 ORDER ACTIVE (UNTUK STATUS SCREEN)
-  final currentOrder = Rxn<OrderModel>();
+  bool isCheckoutMode = false;
+  String orderType = 'takeaway';
+  String paymentMethod = 'NomadPay';
 
   RealtimeChannel? _channel;
 
-  /// ======================
-  /// FETCH ORDERS
-  /// ======================
-  Future<void> fetchOrders() async {
-    final userId = appState.user.id;
-    final result = await orderRepo.getOrders(userId);
-    orders.assignAll(result);
+  @override
+  void onReady() {
+    super.onReady();
+
+    if (appState.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        fetchOrders();
+      });
+    }
   }
 
-  /// ======================
-  /// LISTEN REALTIME STATUS
-  /// ======================
+  Future<void> fetchOrders() async {
+    try {
+      final userId = appState.user.id;
+      if (userId.isEmpty) return;
+
+      isLoading = true;
+      update();
+
+      final result = await orderRepo.getOrders(userId);
+      orders = result;
+      update();
+    } finally {
+      isLoading = false;
+      update();
+    }
+  }
+
+  void goToCheckout() {
+    if (cart.isEmpty) {
+      Get.snackbar('Keranjang kosong', 'Tambahkan menu terlebih dahulu.');
+      return;
+    }
+
+    isCheckoutMode = true;
+    currentOrder = null;
+    orderType = 'takeaway';
+    paymentMethod = 'NomadPay';
+    update();
+
+    Get.toNamed(AppRoutes.orderStatus);
+  }
+
+  void openExistingOrder(OrderModel order) {
+    currentOrder = order;
+    isCheckoutMode = false;
+    update();
+
+    if (order.status.isActive) {
+      listenOrder(order.id);
+    }
+  }
+
+  void setOrderType(String value) {
+    orderType = value;
+    update();
+  }
+
+  void setPaymentMethod(String value) {
+    paymentMethod = value;
+    update();
+  }
+
   void listenOrder(String orderId) {
     _channel?.unsubscribe();
 
@@ -54,14 +107,18 @@ class OrderController extends GetxController {
           ),
           callback: (payload) {
             final data = payload.newRecord;
-
             final updatedStatus = _parseStatus(data['status']);
 
-            if (currentOrder.value != null) {
-              currentOrder.value = currentOrder.value!.copyWith(
-                status: updatedStatus,
-              );
+            if (currentOrder != null) {
+              currentOrder = currentOrder!.copyWith(status: updatedStatus);
             }
+
+            final index = orders.indexWhere((e) => e.id == orderId);
+            if (index >= 0) {
+              orders[index] = orders[index].copyWith(status: updatedStatus);
+            }
+
+            update();
           },
         )
         .subscribe();
@@ -82,23 +139,37 @@ class OrderController extends GetxController {
     }
   }
 
-  /// ======================
-  /// CHECKOUT
-  /// ======================
-  Future<void> checkout() async {
+  Future<void> confirmOrder() async {
     if (cart.isEmpty) {
-      Get.snackbar("Error", "Keranjang kosong");
+      Get.snackbar('Keranjang kosong', 'Tambahkan menu terlebih dahulu.');
+      return;
+    }
+
+    if (!appState.isLoggedIn) {
+      Get.snackbar('Belum login', 'Silakan login terlebih dahulu.');
+      return;
+    }
+
+    if (appState.user.id.isEmpty) {
+      Get.snackbar(
+        'User tidak valid',
+        'ID user pada tabel users tidak ditemukan.',
+      );
+      return;
+    }
+
+    if (appState.selectedBranch == null) {
+      Get.snackbar('Cabang belum dipilih', 'Pilih cabang terlebih dahulu.');
       return;
     }
 
     try {
-      isLoading.value = true;
+      isLoading = true;
+      update();
 
       final queue = await orderRepo.generateQueueNumber();
       final branch = appState.selectedBranch!;
-
       final subtotal = cart.subtotal;
-      final grandTotal = subtotal;
 
       final order = OrderModel(
         id: '',
@@ -106,35 +177,51 @@ class OrderController extends GetxController {
         queueNumber: queue,
         branchId: branch.id,
         branchName: branch.name,
-        items: cart.items,
-        paymentMethod: 'QRIS',
+        items: List<CartItem>.from(cart.cartItems),
+        paymentMethod: paymentMethod,
         status: OrderStatus.pending,
         createdAt: DateTime.now(),
         subtotal: subtotal,
         discountAmount: 0,
         serviceFee: 0,
-        grandTotal: grandTotal,
+        grandTotal: subtotal,
         pointsEarned: appState.calculateEarnedPoints(subtotal),
+        pointsUsed: 0,
+        voucherCode: null,
+        orderType: orderType,
+        notes: null,
       );
 
       final saved = await orderRepo.createOrder(order);
 
-      /// 🔥 SET CURRENT ORDER
-      currentOrder.value = saved;
+      currentOrder = saved;
+      isCheckoutMode = false;
 
-      /// 🔥 START LISTEN
       listenOrder(saved.id);
 
       cart.clearCart();
-
-      Get.toNamed(AppRoutes.orderStatus, arguments: saved);
+      await fetchOrders();
+      update();
+    } on PostgrestException catch (e) {
+      Get.snackbar('Gagal checkout', e.message);
+    } catch (e) {
+      Get.snackbar('Gagal checkout', e.toString());
     } finally {
-      isLoading.value = false;
+      isLoading = false;
+      update();
     }
   }
 
   void goHome() {
     _channel?.unsubscribe();
+    isCheckoutMode = false;
+    update();
     Get.offAllNamed(AppRoutes.home);
+  }
+
+  @override
+  void onClose() {
+    _channel?.unsubscribe();
+    super.onClose();
   }
 }

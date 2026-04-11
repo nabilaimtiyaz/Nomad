@@ -5,6 +5,6 @@ class MainController extends GetxController {
 
   void changeTab(int index) {
     tabIndex = index;
-    update(); // Merender ulang layar yang dibungkus GetBuilder<MainController>
+    update();
   }
 }

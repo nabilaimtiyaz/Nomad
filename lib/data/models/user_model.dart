@@ -1,5 +1,6 @@
 class UserModel {
   final String id;
+  final String authId;
   final String name;
   final String email;
   final String phone;
@@ -9,6 +10,7 @@ class UserModel {
 
   const UserModel({
     required this.id,
+    required this.authId,
     required this.name,
     required this.email,
     required this.phone,
@@ -19,6 +21,7 @@ class UserModel {
 
   UserModel copyWith({
     String? id,
+    String? authId,
     String? name,
     String? email,
     String? phone,
@@ -28,6 +31,7 @@ class UserModel {
   }) {
     return UserModel(
       id: id ?? this.id,
+      authId: authId ?? this.authId,
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
@@ -49,7 +53,13 @@ class UserModel {
     final tier = (map['membership_tier'] ?? map['membershipTier']) as String?;
 
     return UserModel(
-      id: (map['auth_id'] ?? map['id'] ?? '').toString(),
+      /// PENTING:
+      /// id = primary key row di tabel users
+      id: (map['id'] ?? '').toString(),
+
+      /// authId = id user dari Supabase Auth
+      authId: (map['auth_id'] ?? '').toString(),
+
       name: (map['name'] ?? '').toString(),
       email: (map['email'] ?? '').toString(),
       phone: (map['phone'] ?? '').toString(),
@@ -61,7 +71,8 @@ class UserModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'auth_id': id,
+      'id': id,
+      'auth_id': authId,
       'name': name,
       'email': email,
       'phone': phone,
