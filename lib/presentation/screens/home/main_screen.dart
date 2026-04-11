@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_text_styles.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../controllers/cart/cart_controller.dart';
@@ -38,34 +39,19 @@ class MainScreen extends StatelessWidget {
         body: screens[mainCtrl.tabIndex],
         floatingActionButton: Obx(() {
           final cart = Get.find<CartController>();
-          final showFab =
+          final showBadge =
               (mainCtrl.tabIndex == 0 || mainCtrl.tabIndex == 1) &&
               !cart.isEmpty;
 
-          if (!showFab) return const SizedBox.shrink();
+          if (!showBadge) return const SizedBox.shrink();
 
-          return FloatingActionButton.extended(
-            onPressed: () => Get.toNamed(AppRoutes.cart),
-            backgroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            icon: const Icon(
-              Icons.shopping_bag_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-            label: Text(
-              '${cart.totalQty} Item  •  ${Formatters.currency(cart.subtotal)}',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
+          return _FloatingCartBadge(
+            itemCount: cart.totalQty,
+            totalLabel: Formatters.currency(cart.subtotal),
+            onTap: () => Get.toNamed(AppRoutes.cart),
           );
         }),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         bottomNavigationBar: _buildBottomNav(mainCtrl, tabs),
       ),
     );
@@ -116,6 +102,113 @@ class MainScreen extends StatelessWidget {
                 ),
               );
             }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingCartBadge extends StatelessWidget {
+  final int itemCount;
+  final String totalLabel;
+  final VoidCallback onTap;
+
+  const _FloatingCartBadge({
+    required this.itemCount,
+    required this.totalLabel,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.cardBorder),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.teal,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.surface, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$itemCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Lihat Cart',
+                    style: AppTextStyles.heading3.copyWith(fontSize: 14),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$itemCount item • $totalLabel',
+                    style: AppTextStyles.caption.copyWith(fontSize: 11),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 10),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.textSecondary,
+              ),
+            ],
           ),
         ),
       ),

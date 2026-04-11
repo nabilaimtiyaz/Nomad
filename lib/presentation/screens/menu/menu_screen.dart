@@ -3,10 +3,21 @@ import 'package:get/get.dart';
 
 import '../../../controllers/menu/menu_controller.dart';
 import '../../../controllers/cart/cart_controller.dart';
+import '../../../controllers/menu/menu_detail_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/models/menu_item_model.dart'; // Pastikan import Category model
+import '../../../data/models/menu_item_model.dart';
+import 'menu_detail_sheet.dart';
+
+bool _isAllowedMenuCategory(String name) {
+  final normalized = name.trim().toLowerCase();
+  return normalized == 'drink' ||
+      normalized == 'snack' ||
+      normalized == 'food' ||
+      normalized == 'dessert';
+}
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
@@ -14,14 +25,13 @@ class MenuScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<MenuController>();
-    final cart = Get.find<CartController>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
           _Header(controller: controller),
-          const SizedBox(height: 10), // Jarak ganti top bar
+          const SizedBox(height: 10),
           Expanded(
             child: Row(
               children: [
@@ -30,7 +40,9 @@ class MenuScreen extends StatelessWidget {
                   child: Obx(() {
                     if (controller.isLoading.value) {
                       return const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       );
                     }
 
@@ -55,16 +67,26 @@ class MenuScreen extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.coffee_outlined, size: 64, color: AppColors.textHint),
+                            const Icon(
+                              Icons.coffee_outlined,
+                              size: 64,
+                              color: AppColors.textHint,
+                            ),
                             const SizedBox(height: 16),
-                            Text("Menu tidak ditemukan", style: AppTextStyles.bodySecondary),
+                            Text(
+                              "Menu tidak ditemukan",
+                              style: AppTextStyles.bodySecondary,
+                            ),
                           ],
                         ),
                       );
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       itemCount: controller.menus.length,
                       itemBuilder: (_, i) {
                         final item = controller.menus[i];
@@ -104,7 +126,9 @@ class _Header extends StatelessWidget {
           clipper: HeaderClipper(),
           child: Container(
             height: 200,
-            decoration: const BoxDecoration(gradient: AppColors.gradientHeader),
+            decoration: const BoxDecoration(
+              gradient: AppColors.gradientHeader,
+            ),
           ),
         ),
         SafeArea(
@@ -129,7 +153,13 @@ class _Header extends StatelessWidget {
                         letterSpacing: 1.2,
                       ),
                     ),
-                    const Icon(Icons.shopping_bag_outlined, color: Colors.white),
+                    GestureDetector(
+                      onTap: () => Get.toNamed(AppRoutes.cart),
+                      child: const Icon(
+                        Icons.shopping_bag_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 15),
@@ -180,6 +210,7 @@ class HeaderClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
@@ -190,13 +221,20 @@ class _CategorySidebar extends StatelessWidget {
 
   IconData _getIconData(String? iconName) {
     switch (iconName?.toLowerCase()) {
-      case 'local_cafe': return Icons.local_cafe;
-      case 'emoji_food_beverage': return Icons.emoji_food_beverage;
-      case 'fastfood': return Icons.fastfood;
-      case 'dinner_dining': return Icons.dinner_dining;
-      case 'local_drink': return Icons.local_drink;
-      case 'menu_book': return Icons.menu_book;
-      default: return Icons.category;
+      case 'local_cafe':
+        return Icons.local_cafe;
+      case 'emoji_food_beverage':
+        return Icons.emoji_food_beverage;
+      case 'fastfood':
+        return Icons.fastfood;
+      case 'dinner_dining':
+        return Icons.dinner_dining;
+      case 'local_drink':
+        return Icons.local_drink;
+      case 'menu_book':
+        return Icons.menu_book;
+      default:
+        return Icons.category;
     }
   }
 
@@ -210,9 +248,12 @@ class _CategorySidebar extends StatelessWidget {
           return const Center(child: SizedBox());
         }
 
-        // Tambahkan tombol ALL di paling atas secara dinamis
+        final filteredCategories = controller.categories
+            .where((c) => _isAllowedMenuCategory(c.name))
+            .toList();
+
         final allCategory = Category(id: 'all', name: 'ALL', icon: 'menu_book');
-        final displayCategories = [allCategory, ...controller.categories];
+        final displayCategories = [allCategory, ...filteredCategories];
 
         return ListView.builder(
           itemCount: displayCategories.length,
@@ -230,12 +271,16 @@ class _CategorySidebar extends StatelessWidget {
                       duration: const Duration(milliseconds: 300),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFB4F3E6) : AppColors.surfaceGrey,
+                        color: isSelected
+                            ? const Color(0xFFB4F3E6)
+                            : AppColors.surfaceGrey,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         _getIconData(category.icon),
-                        color: isSelected ? AppColors.tealMedium : Colors.grey[400],
+                        color: isSelected
+                            ? AppColors.tealMedium
+                            : Colors.grey[400],
                         size: 28,
                       ),
                     ),
@@ -246,7 +291,9 @@ class _CategorySidebar extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
-                        color: isSelected ? AppColors.textPrimary : Colors.grey[400],
+                        color: isSelected
+                            ? AppColors.textPrimary
+                            : Colors.grey[400],
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -262,116 +309,190 @@ class _CategorySidebar extends StatelessWidget {
 }
 
 class _MenuItemCard extends StatelessWidget {
-  final dynamic item;
+  final MenuItem item;
   final int qty;
   final CartController cart;
 
-  const _MenuItemCard({required this.item, required this.qty, required this.cart});
+  const _MenuItemCard({
+    required this.item,
+    required this.qty,
+    required this.cart,
+  });
+
+  void _openDetail(BuildContext context) {
+    if (!item.isAvailable) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => MenuDetailSheet(
+        controller: MenuDetailController(
+          item: item,
+          initialQty: 1,
+        ),
+      ),
+    );
+  }
+
+  void _quickAdd() {
+    if (!item.isAvailable) return;
+    cart.addSimple(item);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 110,
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(55),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(45),
-                  child: Image.network(
-                    item.imageUrl ?? '',
-                    width: 90,
-                    height: 90,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+    return InkWell(
+      onTap: item.isAvailable ? () => _openDetail(context) : null,
+      borderRadius: BorderRadius.circular(55),
+      child: Container(
+        height: 110,
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(55),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(45),
+                    child: SizedBox(
                       width: 90,
                       height: 90,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                      child: _MenuImage(imageUrl: item.imageUrl),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          style: AppTextStyles.heading3.copyWith(fontSize: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(fontSize: 11),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          Formatters.currency(item.price),
+                          style: AppTextStyles.price.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 50),
+                ],
+              ),
+            ),
+            Positioned(
+              right: 15,
+              bottom: 15,
+              child: GestureDetector(
+                onTap: _quickAdd,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: item.isAvailable
+                        ? const Color(0xFF006D5B)
+                        : AppColors.surfaceGrey,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 24),
+                ),
+              ),
+            ),
+            if (qty > 0)
+              Positioned(
+                right: 20,
+                top: 15,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    "$qty",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: AppTextStyles.heading3.copyWith(fontSize: 16),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.description ?? '',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(fontSize: 11),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        Formatters.currency(item.price),
-                        style: AppTextStyles.price.copyWith(color: AppColors.primary),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 50),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 15,
-            bottom: 15,
-            child: GestureDetector(
-              onTap: () => cart.addItem(item, 1, ''),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF006D5B),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.add, color: Colors.white, size: 24),
               ),
-            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuImage extends StatelessWidget {
+  final String imageUrl;
+
+  const _MenuImage({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl.trim().isEmpty) {
+      return Container(
+        color: Colors.grey[200],
+        child: const Icon(
+          Icons.image_not_supported,
+          color: Colors.grey,
+        ),
+      );
+    }
+
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: Colors.grey[200],
+          child: const Icon(
+            Icons.broken_image,
+            color: Colors.grey,
           ),
-          if (qty > 0)
-            Positioned(
-              right: 20,
-              top: 15,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  "$qty",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-        ],
+        ),
+      );
+    }
+
+    return Image.asset(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: Colors.grey[200],
+        child: const Icon(
+          Icons.broken_image,
+          color: Colors.grey,
+        ),
       ),
     );
   }

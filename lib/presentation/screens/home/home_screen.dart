@@ -5,11 +5,20 @@ import '../../../controllers/cart/cart_controller.dart';
 import '../../../controllers/home/home_controller.dart';
 import '../../../controllers/home/main_controller.dart';
 import '../../../controllers/menu/menu_controller.dart';
+import '../../../controllers/menu/menu_detail_controller.dart';
 import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/menu_item_model.dart';
 import '../menu/menu_detail_sheet.dart';
+
+bool _isAllowedHomeCategory(String name) {
+  final normalized = name.trim().toLowerCase();
+  return normalized == 'drink' ||
+      normalized == 'snack' ||
+      normalized == 'food' ||
+      normalized == 'dessert';
+}
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -62,12 +71,9 @@ class HomeScreen extends StatelessWidget {
         }
 
         final selectedBranch = homeCtrl.selectedBranch.value;
-        final userName = appState.isLoggedIn
-            ? appState.user.name.trim()
-            : 'Guest';
-        final firstName = userName.isEmpty
-            ? 'Guest'
-            : userName.split(' ').first;
+        final userName =
+            appState.isLoggedIn ? appState.user.name.trim() : 'Guest';
+        final firstName = userName.isEmpty ? 'Guest' : userName.split(' ').first;
 
         return CustomScrollView(
           slivers: [
@@ -291,11 +297,11 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.all(18),
+                          const Padding(
+                            padding: EdgeInsets.all(18),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text(
                                   '25% OFF',
                                   style: TextStyle(
@@ -353,37 +359,45 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 92,
-                      child: homeCtrl.categories.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'Kategori belum tersedia',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                ),
+                      child: (() {
+                        final filteredCategories = homeCtrl.categories
+                            .where((c) => _isAllowedHomeCategory(c.name))
+                            .toList();
+
+                        if (filteredCategories.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'Kategori belum tersedia',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
                               ),
-                            )
-                          : ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: homeCtrl.categories.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (context, index) {
-                                final category = homeCtrl.categories[index];
-                                return _CategoryButton(
-                                  label: category.name,
-                                  icon: homeCtrl.iconForCategory(category.name),
-                                  onTap: () async {
-                                    await homeCtrl.selectCategory(category.id);
-
-                                    final mainCtrl = Get.find<MainController>();
-                                    final menuCtrl = Get.find<MenuController>();
-
-                                    menuCtrl.selectedType.value = category.id;
-                                    mainCtrl.changeTab(1);
-                                  },
-                                );
-                              },
                             ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: filteredCategories.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final category = filteredCategories[index];
+                            return _CategoryButton(
+                              label: category.name,
+                              icon: homeCtrl.iconForCategory(category.name),
+                              onTap: () async {
+                                await homeCtrl.selectCategory(category.id);
+
+                                final mainCtrl = Get.find<MainController>();
+                                final menuCtrl = Get.find<MenuController>();
+
+                                menuCtrl.selectedType.value = category.id;
+                                mainCtrl.changeTab(1);
+                              },
+                            );
+                          },
+                        );
+                      })(),
                     ),
                     const SizedBox(height: 24),
                     Row(
@@ -443,11 +457,11 @@ class HomeScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisExtent: 230,
-                              crossAxisSpacing: 14,
-                              mainAxisSpacing: 14,
-                            ),
+                          crossAxisCount: 2,
+                          mainAxisExtent: 230,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                        ),
                         itemBuilder: (context, index) {
                           final item = homeCtrl.featuredMenus[index];
                           return _MenuCard(
@@ -500,8 +514,7 @@ class HomeScreen extends StatelessWidget {
                 onTap: branch.isOpen
                     ? () async {
                         await homeCtrl.selectBranch(branch);
-                        await Get.find<MenuController>()
-                            .reloadForBranchChange();
+                        await Get.find<MenuController>().reloadForBranchChange();
                         Navigator.pop(sheetContext);
                       }
                     : null,
@@ -594,163 +607,151 @@ class _MenuCard extends StatelessWidget {
     required this.cartCtrl,
   });
 
+  void _openDetail(BuildContext context) {
+    if (!item.isAvailable) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => MenuDetailSheet(
+        controller: MenuDetailController(
+          item: item,
+          initialQty: 1,
+        ),
+      ),
+    );
+  }
+
+  void _quickAdd() {
+    if (!item.isAvailable) return;
+    cartCtrl.addSimple(item);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    color: AppColors.surfaceGrey,
-                    child: item.imageUrl.isNotEmpty
-                        ? Image.network(
-                            item.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
-                              child: Icon(
-                                Icons.image_not_supported_outlined,
-                                color: AppColors.textHint,
+    return InkWell(
+      onTap: item.isAvailable ? () => _openDetail(context) : null,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      color: AppColors.surfaceGrey,
+                      child: _MenuImage(imageUrl: item.imageUrl),
+                    ),
+                    if (!item.isAvailable)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.35),
+                          alignment: Alignment.center,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Tidak Tersedia',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: item.isAvailable
+                            ? AppColors.textPrimary
+                            : AppColors.textHint,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      Formatters.currency(item.price),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: item.isAvailable
+                            ? AppColors.primary
+                            : AppColors.textHint,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (qty > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.tealLight,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${qty} di cart',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.teal,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           )
-                        : const Center(
-                            child: Icon(
-                              Icons.local_cafe_rounded,
-                              size: 36,
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                  ),
-                  if (!item.isAvailable)
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withOpacity(0.35),
-                        alignment: Alignment.center,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Tidak Tersedia',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: item.isAvailable
-                          ? AppColors.textPrimary
-                          : AppColors.textHint,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          Formatters.currency(item.price),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: item.isAvailable
-                                ? AppColors.primary
-                                : AppColors.textHint,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (qty > 0)
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppColors.tealLight,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${qty}x',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.teal,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        )
-                      else
+                        else
+                          const SizedBox.shrink(),
                         GestureDetector(
-                          onTap: item.isAvailable
-                              ? () {
-                                  if (item.isDrink) {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (ctx) => MenuDetailSheet(
-                                        item: item,
-                                        currentQty: 0,
-                                        currentNotes: '',
-                                        onAdd: (newQty, notes) {
-                                          Navigator.pop(ctx);
-                                          cartCtrl.addItem(item, newQty, notes);
-                                        },
-                                      ),
-                                    );
-                                  } else {
-                                    cartCtrl.addItem(item, 1, '');
-                                  }
-                                }
-                              : null,
+                          onTap: _quickAdd,
                           child: Container(
-                            width: 28,
-                            height: 28,
+                            width: 30,
+                            height: 30,
                             decoration: BoxDecoration(
                               color: item.isAvailable
                                   ? AppColors.teal
                                   : AppColors.surfaceGrey,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(9),
                             ),
                             child: const Icon(
                               Icons.add_rounded,
@@ -759,12 +760,56 @@ class _MenuCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuImage extends StatelessWidget {
+  final String imageUrl;
+
+  const _MenuImage({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl.trim().isEmpty) {
+      return const Center(
+        child: Icon(
+          Icons.local_cafe_rounded,
+          size: 36,
+          color: AppColors.textHint,
+        ),
+      );
+    }
+
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(
+          child: Icon(
+            Icons.image_not_supported_outlined,
+            color: AppColors.textHint,
+          ),
+        ),
+      );
+    }
+
+    return Image.asset(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => const Center(
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: AppColors.textHint,
         ),
       ),
     );
