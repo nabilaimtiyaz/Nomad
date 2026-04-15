@@ -48,8 +48,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
     final VoucherController voucherController =
         Get.isRegistered<VoucherController>()
-            ? Get.find<VoucherController>()
-            : Get.put(VoucherController());
+        ? Get.find<VoucherController>()
+        : Get.put(VoucherController());
 
     final cart = Get.find<CartController>();
     final appState = Get.find<AppStateController>();
@@ -58,7 +58,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       init: controller,
       builder: (controller) {
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: const Color(0xFFF8F3EF),
           body: SafeArea(
             child: controller.isCheckoutMode
                 ? _CheckoutMode(
@@ -70,17 +70,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     branchAddress: appState.selectedBranch?.address ?? '-',
                   )
                 : controller.currentOrder == null
-                    ? const Center(
-                        child: Text(
-                          'Belum ada data pesanan',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      )
-                    : _StatusMode(
-                        order: controller.currentOrder!,
-                        steps: _steps,
-                        onBackHome: controller.goHome,
-                      ),
+                ? const Center(
+                    child: Text(
+                      'Belum ada data pesanan',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  )
+                : _StatusMode(
+                    order: controller.currentOrder!,
+                    steps: _steps,
+                    onBackHome: controller.goHome,
+                  ),
           ),
         );
       },
@@ -174,79 +174,6 @@ class _CheckoutMode extends StatelessWidget {
     );
   }
 
-  Future<void> _showPointsDialog(BuildContext context) async {
-    final appState = Get.find<AppStateController>();
-
-    if (!appState.isLoggedIn) {
-      _showError('Kamu harus login dulu untuk menggunakan poin');
-      return;
-    }
-
-    if (voucherController.appliedVoucher.value != null) {
-      _showError('Hapus voucher dulu sebelum menggunakan poin');
-      return;
-    }
-
-    if (controller.maxPointsUsable <= 0) {
-      _showError('Poin belum tersedia atau subtotal belum memenuhi');
-      return;
-    }
-
-    await Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Gunakan Poin',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Poin tersedia: ${Formatters.commas(appState.user.loyaltyPoints)}',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Maksimal poin yang bisa dipakai: ${Formatters.commas(controller.maxPointsUsable)}',
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Poin dipakai sebagai alat bayar, bukan diskon tambahan.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          if (controller.pointsToUse > 0)
-            TextButton(
-              onPressed: () {
-                controller.clearPoints();
-                Get.back();
-                _showSuccess('Poin dibatalkan');
-              },
-              child: const Text('Hapus Poin'),
-            ),
-          TextButton(onPressed: Get.back, child: const Text('Batal')),
-          TextButton(
-            onPressed: () {
-              controller.applyMaxPoints();
-              Get.back();
-              _showSuccess('Poin berhasil diterapkan');
-            },
-            child: const Text('Gunakan Maksimal'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _submitCheckout() async {
     final result = await controller.confirmOrder();
 
@@ -276,6 +203,25 @@ class _CheckoutMode extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _togglePoints(bool value) {
+    if (!value) {
+      controller.clearPoints();
+      return;
+    }
+
+    if (voucherController.appliedVoucher.value != null) {
+      _showError('Hapus voucher dulu sebelum menggunakan poin');
+      return;
+    }
+
+    if (controller.maxPointsUsable <= 0) {
+      _showError('Poin belum tersedia atau subtotal belum memenuhi');
+      return;
+    }
+
+    controller.applyMaxPoints();
   }
 
   static void _showError(String message) {
@@ -312,16 +258,21 @@ class _CheckoutMode extends StatelessWidget {
   Widget build(BuildContext context) {
     final appliedVoucher = voucherController.appliedVoucher.value;
     final appState = Get.find<AppStateController>();
+    final bool isPointsOn = controller.pointsToUse > 0;
+    final int pointsDiscountRupiah = controller.pointsToUse * 1000;
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
           child: Row(
             children: [
               IconButton(
                 onPressed: Get.back,
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.primary,
+                ),
               ),
               const Expanded(
                 child: Text(
@@ -333,268 +284,192 @@ class _CheckoutMode extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(
-                Icons.help_outline_rounded,
-                color: AppColors.textSecondary,
-                size: 20,
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withOpacity(0.10),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: AppColors.primary,
+                ),
               ),
             ],
           ),
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
             children: [
+              _CompactOrderPreview(cart: cart),
+              const SizedBox(height: 22),
+              const Text(
+                'Privileges',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _SectionCard(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    _PrivilegeRow(
+                      iconBg: const Color(0xFFD8F4EE),
+                      iconColor: AppColors.teal,
+                      icon: Icons.confirmation_number_outlined,
+                      title: 'Apply Voucher',
+                      subtitle: appliedVoucher == null
+                          ? 'Select your available rewards'
+                          : appliedVoucher.code,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (appliedVoucher != null)
+                            GestureDetector(
+                              onTap: () {
+                                voucherController.clearAppliedVoucher();
+                                controller.refreshCheckout();
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.only(right: 8),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 18,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                      onTap: () => _showVoucherDialog(context),
+                    ),
+                    const SizedBox(height: 12),
+                    _PrivilegeToggleRow(
+                      iconBg: const Color(0xFFD9EBF6),
+                      iconColor: const Color(0xFF2B80B9),
+                      icon: Icons.local_offer_outlined,
+                      title: 'Gunakan Poin',
+                      subtitle: appState.isLoggedIn
+                          ? 'Poin tersedia: ${Formatters.commas(appState.user.loyaltyPoints)} poin'
+                          : 'Login dulu untuk menggunakan poin',
+                      value: isPointsOn,
+                      onChanged: _togglePoints,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6EFEC),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        isPointsOn
+                            ? 'Info: Menggunakan ${Formatters.commas(controller.pointsToUse)} poin senilai ${Formatters.currency(pointsDiscountRupiah)}. Maksimal penggunaan poin adalah 10% subtotal pesanan ini.'
+                            : 'Info: Maksimal poin yang dapat digunakan adalah 10% subtotal pesanan ini.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.45,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               _SectionCard(
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Order Summary', style: AppTextStyles.heading2),
-                    const SizedBox(height: 16),
-                    ...cart.cartItems.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _CheckoutItemTile(item: item),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              _SectionCard(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _SegmentButton(
-                        label: 'Dine In',
-                        selected: controller.orderType == 'dine_in',
-                        onTap: () => controller.setOrderType('dine_in'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _SegmentButton(
-                        label: 'Takeaway',
-                        selected: controller.orderType == 'takeaway',
-                        onTap: () => controller.setOrderType('takeaway'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              _SectionCard(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight.withOpacity(0.10),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.location_on_outlined,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Pickup Store',
-                            style: AppTextStyles.captionBold,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(branchName, style: AppTextStyles.heading3),
-                          const SizedBox(height: 4),
-                          Text(branchAddress, style: AppTextStyles.caption),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              _SectionCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: InkWell(
-                  onTap: () => _showVoucherDialog(context),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceGrey,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.confirmation_number_outlined,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          appliedVoucher == null
-                              ? 'Apply Promo Code'
-                              : appliedVoucher.code,
-                          style: TextStyle(
-                            color: appliedVoucher == null
-                                ? AppColors.textPrimary
-                                : AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      if (appliedVoucher != null)
-                        IconButton(
-                          onPressed: () {
-                            voucherController.clearAppliedVoucher();
-                            controller.refreshCheckout();
-                          },
-                          icon: const Icon(
-                            Icons.close_rounded,
-                            size: 18,
-                            color: AppColors.textSecondary,
-                          ),
-                        )
-                      else
-                        const Text(
-                          'Apply',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _SectionCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: InkWell(
-                  onTap: () => _showPointsDialog(context),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceGrey,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.stars_rounded,
-                          size: 18,
-                          color: AppColors.teal,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              controller.pointsToUse > 0
-                                  ? '${Formatters.commas(controller.pointsToUse)} poin digunakan'
-                                  : 'Gunakan Poin',
-                              style: TextStyle(
-                                color: controller.pointsToUse > 0
-                                    ? AppColors.teal
-                                    : AppColors.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              appState.isLoggedIn
-                                  ? 'Poin tersedia: ${Formatters.commas(appState.user.loyaltyPoints)}'
-                                  : 'Login dulu untuk menggunakan poin',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (controller.pointsToUse > 0)
-                        IconButton(
-                          onPressed: () {
-                            controller.clearPoints();
-                          },
-                          icon: const Icon(
-                            Icons.close_rounded,
-                            size: 18,
-                            color: AppColors.textSecondary,
-                          ),
-                        )
-                      else
-                        const Text(
-                          'Use',
-                          style: TextStyle(
-                            color: AppColors.teal,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _SectionCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
                     const Text(
-                      'Payment Method',
+                      'Order Summary',
                       style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: controller.paymentMethod,
-                        borderRadius: BorderRadius.circular(16),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'NomadPay',
-                            child: Text('NomadPay'),
+                    const SizedBox(height: 18),
+                    _summaryRow(
+                      'Subtotal',
+                      Formatters.currency(controller.subtotalPreview),
+                    ),
+                    const SizedBox(height: 10),
+                    _summaryRow(
+                      'Diskon Voucher',
+                      controller.voucherDiscountPreview > 0
+                          ? '- ${Formatters.currency(controller.voucherDiscountPreview)}'
+                          : '- Rp 0',
+                      valueColor: controller.voucherDiscountPreview > 0
+                          ? AppColors.success
+                          : AppColors.textSecondary,
+                    ),
+                    const SizedBox(height: 10),
+                    _summaryRow(
+                      'Poin digunakan',
+                      '- ${Formatters.currency(pointsDiscountRupiah)}',
+                      valueColor: pointsDiscountRupiah > 0
+                          ? AppColors.teal
+                          : AppColors.textSecondary,
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1, color: AppColors.divider),
+                    const SizedBox(height: 14),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'TOTAL AKHIR',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.6,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                          DropdownMenuItem(value: 'Cash', child: Text('Cash')),
-                          DropdownMenuItem(value: 'QRIS', child: Text('QRIS')),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            controller.setPaymentMethod(value);
-                          }
-                        },
-                      ),
+                        ),
+                        Text(
+                          Formatters.currency(controller.grandTotalPreview),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            (controller.pointsToUse > 0 ||
+                                    controller.voucherDiscountPreview > 0)
+                                ? 'Transaksi ini tidak mendapatkan poin baru.'
+                                : 'Estimasi poin didapat: ${Formatters.commas(Get.find<AppStateController>().calculateEarnedPoints(controller.subtotalPreview))}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        const Text(
+                          'Inclusive of Tax',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -603,85 +478,273 @@ class _CheckoutMode extends StatelessWidget {
           ),
         ),
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 18,
-                offset: Offset(0, -4),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+          color: const Color(0xFFF8F3EF),
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: controller.isLoading ? null : _submitCheckout,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
               ),
-            ],
+              child: Text(
+                controller.isLoading
+                    ? 'Mengonfirmasi...'
+                    : 'Konfirmasi & Pesan',
+                style: AppTextStyles.button,
+              ),
+            ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: valueColor ?? AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactOrderPreview extends StatelessWidget {
+  final CartController cart;
+
+  const _CompactOrderPreview({required this.cart});
+
+  @override
+  Widget build(BuildContext context) {
+    final CartItem? firstItem = cart.cartItems.isNotEmpty
+        ? cart.cartItems.first
+        : null;
+
+    if (firstItem == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          _ItemImage(imageUrl: firstItem.menuItem.imageUrl),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  firstItem.menuItem.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  firstItem.notes.isNotEmpty
+                      ? firstItem.notes
+                      : 'Signature order',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  Formatters.currency(firstItem.subtotal),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6EFEC),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'Qty: ${firstItem.qty}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrivilegeRow extends StatelessWidget {
+  final Color iconBg;
+  final Color iconColor;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget trailing;
+  final VoidCallback onTap;
+
+  const _PrivilegeRow({
+    required this.iconBg,
+    required this.iconColor,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          trailing,
+        ],
+      ),
+    );
+  }
+}
+
+class _PrivilegeToggleRow extends StatelessWidget {
+  final Color iconBg;
+  final Color iconColor;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _PrivilegeToggleRow({
+    required this.iconBg,
+    required this.iconColor,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: iconColor),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _priceRow(
-                'Subtotal',
-                Formatters.currency(controller.subtotalPreview),
-              ),
-              if (controller.voucherDiscountPreview > 0) ...[
-                const SizedBox(height: 8),
-                _priceRow(
-                  'Diskon Voucher',
-                  '- ${Formatters.currency(controller.voucherDiscountPreview)}',
-                  color: AppColors.success,
-                ),
-              ],
-              if (controller.pointsToUse > 0) ...[
-                const SizedBox(height: 8),
-                _priceRow(
-                  'Poin Digunakan',
-                  '- ${Formatters.currency(controller.pointsToUse)}',
-                  color: AppColors.teal,
-                ),
-              ],
-              const SizedBox(height: 10),
-              const Divider(color: AppColors.divider, height: 1),
-              const SizedBox(height: 10),
-              _priceRow(
-                'Total Amount',
-                Formatters.currency(controller.grandTotalPreview),
-                bold: true,
-                color: AppColors.primary,
-              ),
-              const SizedBox(height: 8),
               Text(
-                (controller.pointsToUse > 0 ||
-                        controller.voucherDiscountPreview > 0)
-                    ? 'Transaksi ini tidak mendapatkan poin baru.'
-                    : 'Estimasi poin didapat: ${Formatters.commas(Get.find<AppStateController>().calculateEarnedPoints(controller.subtotalPreview))}',
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: controller.isLoading ? null : _submitCheckout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  child: Text(
-                    controller.isLoading
-                        ? 'Mengonfirmasi...'
-                        : 'Konfirmasi & Pesan',
-                    style: AppTextStyles.button,
-                  ),
-                ),
-              ),
             ],
           ),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeColor: Colors.white,
+          activeTrackColor: AppColors.teal,
+          inactiveThumbColor: Colors.white,
+          inactiveTrackColor: const Color(0xFFE0DAD5),
         ),
       ],
     );
@@ -762,28 +825,24 @@ class _ItemImage extends StatelessWidget {
       height: 72,
       decoration: BoxDecoration(
         color: AppColors.surfaceGrey,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.antiAlias,
       child: imageUrl.trim().isEmpty
           ? const Icon(Icons.image_outlined, color: AppColors.textHint)
           : imageUrl.startsWith('http')
-              ? Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.image_outlined,
-                    color: AppColors.textHint,
-                  ),
-                )
-              : Image.asset(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.image_outlined,
-                    color: AppColors.textHint,
-                  ),
-                ),
+          ? Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.image_outlined, color: AppColors.textHint),
+            )
+          : Image.asset(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.image_outlined, color: AppColors.textHint),
+            ),
     );
   }
 }
@@ -802,7 +861,7 @@ class _PaymentSuccessDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final earnedText = order.pointsEarned > 0
-        ? 'Kamu mendapatkan +${order.pointsEarned} koin!'
+        ? 'Kamu mendapatkan +${order.pointsEarned} poin!'
         : 'Transaksi ini tidak menghasilkan poin baru.';
 
     return Container(
@@ -1129,7 +1188,7 @@ class _StatusMode extends StatelessWidget {
                       const SizedBox(height: 8),
                       _priceRow(
                         'Poin Digunakan',
-                        '- ${Formatters.currency(order.pointsUsed)}',
+                        '- ${Formatters.currency(order.pointsUsed * 1000)}',
                         color: AppColors.teal,
                       ),
                     ],
@@ -1275,8 +1334,7 @@ class _SectionCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.cardBorder),
+        borderRadius: BorderRadius.circular(22),
       ),
       child: child,
     );

@@ -7,6 +7,7 @@ import '../data/models/order_model.dart';
 import '../data/models/user_model.dart';
 
 class AppStateController extends GetxController {
+  DateTime? lastRedeemDate;
   UserModel? _user;
   UserModel get user => _user!;
 
@@ -139,15 +140,38 @@ class AppStateController extends GetxController {
   void setCheckoutPointsToUse(int points) {
     if (_user == null) {
       _checkoutPointsToUse = 0;
-    } else {
-      _checkoutPointsToUse = points.clamp(0, _user!.loyaltyPoints);
+      update();
+      return;
     }
+
+    final maxByBalance = _user!.loyaltyPoints;
+    final maxByBusinessRule =
+        cartTotalPrice ~/ 10000; // 10% subtotal, 1 poin = Rp1.000
+    final maxAllowed = maxByBalance < maxByBusinessRule
+        ? maxByBalance
+        : maxByBusinessRule;
+
+    _checkoutPointsToUse = points.clamp(0, maxAllowed);
     update();
   }
 
   void clearCheckoutPoints() {
     _checkoutPointsToUse = 0;
     update();
+  }
+
+  bool canRedeemToday() {
+    if (lastRedeemDate == null) return true;
+
+    final now = DateTime.now();
+
+    return !(lastRedeemDate!.year == now.year &&
+        lastRedeemDate!.month == now.month &&
+        lastRedeemDate!.day == now.day);
+  }
+
+  void markRedeemToday() {
+    lastRedeemDate = DateTime.now();
   }
 
   void _earnPoints(int points) {
@@ -196,6 +220,6 @@ class AppStateController extends GetxController {
 
   int calculateEarnedPoints(int subtotal) {
     if (subtotal <= 0) return 0;
-    return ((subtotal / 1000) * pointMultiplier).floor();
+    return ((subtotal / 5000) * pointMultiplier).floor();
   }
 }

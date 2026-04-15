@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../controllers/cart/cart_controller.dart';
 import '../../../controllers/menu/menu_detail_controller.dart';
+import '../../../controllers/order/order_controller.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
@@ -10,6 +12,35 @@ class MenuDetailSheet extends StatelessWidget {
   final MenuDetailController controller;
 
   const MenuDetailSheet({super.key, required this.controller});
+
+  Future<void> _handleRedeemFlow(BuildContext context) async {
+    final confirmed = await Get.dialog<bool>(
+      _RedeemConfirmDialog(controller: controller),
+      barrierDismissible: true,
+    );
+
+    if (confirmed != true) return;
+
+    final error = await controller.redeemWithPoints();
+    if (error != null) {
+      Get.snackbar('Gagal', error, snackPosition: SnackPosition.TOP);
+      return;
+    }
+
+    if (Get.isDialogOpen ?? false) {
+      Get.back();
+    }
+
+    Get.back();
+
+    await Get.dialog(
+      _RedeemSuccessDialog(
+        itemName: controller.item.name,
+        pointsUsed: controller.totalRedeemPoints,
+      ),
+      barrierDismissible: true,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +105,16 @@ class MenuDetailSheet extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  Formatters.currency(controller.unitPrice),
+                                  controller.isRedeemMode
+                                      ? '${Formatters.commas(controller.redeemUnitPoints)} poin'
+                                      : Formatters.currency(
+                                          controller.unitPrice,
+                                        ),
                                   textAlign: TextAlign.right,
                                   style: AppTextStyles.priceLarge.copyWith(
-                                    color: AppColors.primary,
+                                    color: controller.isRedeemMode
+                                        ? AppColors.teal
+                                        : AppColors.primary,
                                     fontSize: 18,
                                     fontWeight: FontWeight.w800,
                                     height: 1.15,
@@ -99,54 +136,146 @@ class MenuDetailSheet extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: Color(0xFFF0E9E2),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (controller.isDrink) ...[
-                                  const _SectionHeader(title: 'TEMPERATURE'),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _ChoiceCard(
-                                          label: 'Ice',
-                                          selected:
-                                              controller
-                                                  .drinkCustomization
-                                                  .temperature ==
-                                              'ice',
-                                          onTap: () =>
-                                              controller.setTemperature('ice'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _ChoiceCard(
-                                          label: 'Hot',
-                                          selected:
-                                              controller
-                                                  .drinkCustomization
-                                                  .temperature ==
-                                              'hot',
-                                          onTap: () =>
-                                              controller.setTemperature('hot'),
-                                        ),
-                                      ),
-                                    ],
+                          if (controller.isRedeemMode) ...[
+                            const Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: Color(0xFFF0E9E2),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                14,
+                                16,
+                                18,
+                              ),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.tealLight,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Text(
+                                  'Reward ini hanya berlaku untuk 1 item per penukaran. Setelah dikonfirmasi, item akan masuk ke keranjang dengan harga Rp0.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.45,
+                                    color: AppColors.teal,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                  const SizedBox(height: 18),
-                                  if (controller
-                                          .drinkCustomization
-                                          .temperature ==
-                                      'ice') ...[
-                                    const _SectionHeader(title: 'ICE LEVEL'),
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            const Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: Color(0xFFF0E9E2),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                14,
+                                16,
+                                18,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (controller.isDrink) ...[
+                                    const _SectionHeader(title: 'TEMPERATURE'),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _ChoiceCard(
+                                            label: 'Ice',
+                                            selected:
+                                                controller
+                                                    .drinkCustomization
+                                                    .temperature ==
+                                                'ice',
+                                            onTap: () => controller
+                                                .setTemperature('ice'),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: _ChoiceCard(
+                                            label: 'Hot',
+                                            selected:
+                                                controller
+                                                    .drinkCustomization
+                                                    .temperature ==
+                                                'hot',
+                                            onTap: () => controller
+                                                .setTemperature('hot'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 18),
+                                    if (controller
+                                            .drinkCustomization
+                                            .temperature ==
+                                        'ice') ...[
+                                      const _SectionHeader(title: 'ICE LEVEL'),
+                                      const SizedBox(height: 10),
+                                      Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _ChoiceCard(
+                                                  label: 'Less Ice',
+                                                  selected:
+                                                      controller
+                                                          .drinkCustomization
+                                                          .iceLevel ==
+                                                      'less',
+                                                  onTap: () => controller
+                                                      .setIceLevel('less'),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: _ChoiceCard(
+                                                  label: 'Normal Ice',
+                                                  selected:
+                                                      controller
+                                                          .drinkCustomization
+                                                          .iceLevel ==
+                                                      'normal',
+                                                  onTap: () => controller
+                                                      .setIceLevel('normal'),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _ChoiceCard(
+                                                  label: 'More Ice',
+                                                  selected:
+                                                      controller
+                                                          .drinkCustomization
+                                                          .iceLevel ==
+                                                      'more',
+                                                  onTap: () => controller
+                                                      .setIceLevel('more'),
+                                                ),
+                                              ),
+                                              const Expanded(child: SizedBox()),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 18),
+                                    ],
+                                    const _SectionHeader(title: 'SUGAR LEVEL'),
                                     const SizedBox(height: 10),
                                     Column(
                                       children: [
@@ -154,27 +283,27 @@ class MenuDetailSheet extends StatelessWidget {
                                           children: [
                                             Expanded(
                                               child: _ChoiceCard(
-                                                label: 'Less Ice',
+                                                label: 'Normal Sugar',
                                                 selected:
                                                     controller
                                                         .drinkCustomization
-                                                        .iceLevel ==
-                                                    'less',
+                                                        .sugarLevel ==
+                                                    'normal',
                                                 onTap: () => controller
-                                                    .setIceLevel('less'),
+                                                    .setSugarLevel('normal'),
                                               ),
                                             ),
                                             const SizedBox(width: 10),
                                             Expanded(
                                               child: _ChoiceCard(
-                                                label: 'Normal Ice',
+                                                label: 'Less Sugar',
                                                 selected:
                                                     controller
                                                         .drinkCustomization
-                                                        .iceLevel ==
-                                                    'normal',
+                                                        .sugarLevel ==
+                                                    'less',
                                                 onTap: () => controller
-                                                    .setIceLevel('normal'),
+                                                    .setSugarLevel('less'),
                                               ),
                                             ),
                                           ],
@@ -184,14 +313,14 @@ class MenuDetailSheet extends StatelessWidget {
                                           children: [
                                             Expanded(
                                               child: _ChoiceCard(
-                                                label: 'More Ice',
+                                                label: 'More Sugar',
                                                 selected:
                                                     controller
                                                         .drinkCustomization
-                                                        .iceLevel ==
+                                                        .sugarLevel ==
                                                     'more',
                                                 onTap: () => controller
-                                                    .setIceLevel('more'),
+                                                    .setSugarLevel('more'),
                                               ),
                                             ),
                                             const Expanded(child: SizedBox()),
@@ -201,107 +330,53 @@ class MenuDetailSheet extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 18),
                                   ],
-                                  const _SectionHeader(title: 'SUGAR LEVEL'),
-                                  const SizedBox(height: 10),
-                                  Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _ChoiceCard(
-                                              label: 'Normal Sugar',
-                                              selected:
-                                                  controller
-                                                      .drinkCustomization
-                                                      .sugarLevel ==
-                                                  'normal',
-                                              onTap: () => controller
-                                                  .setSugarLevel('normal'),
-                                            ),
+                                  if (controller.isFoodCustomizable) ...[
+                                    const _SectionHeader(title: 'LEVEL PEDAS'),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _ChoiceCard(
+                                            label: 'Tidak Pedas',
+                                            selected: !controller
+                                                .foodCustomization
+                                                .isSpicy,
+                                            onTap: () =>
+                                                controller.setSpicy(false),
                                           ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: _ChoiceCard(
-                                              label: 'Less Sugar',
-                                              selected:
-                                                  controller
-                                                      .drinkCustomization
-                                                      .sugarLevel ==
-                                                  'less',
-                                              onTap: () => controller
-                                                  .setSugarLevel('less'),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _ChoiceCard(
-                                              label: 'More Sugar',
-                                              selected:
-                                                  controller
-                                                      .drinkCustomization
-                                                      .sugarLevel ==
-                                                  'more',
-                                              onTap: () => controller
-                                                  .setSugarLevel('more'),
-                                            ),
-                                          ),
-                                          const Expanded(child: SizedBox()),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 18),
-                                ],
-                                if (controller.isFoodCustomizable) ...[
-                                  const _SectionHeader(title: 'LEVEL PEDAS'),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _ChoiceCard(
-                                          label: 'Tidak Pedas',
-                                          selected: !controller
-                                              .foodCustomization
-                                              .isSpicy,
-                                          onTap: () =>
-                                              controller.setSpicy(false),
                                         ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _ChoiceCard(
-                                          label: 'Pedas',
-                                          selected: controller
-                                              .foodCustomization
-                                              .isSpicy,
-                                          onTap: () =>
-                                              controller.setSpicy(true),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: _ChoiceCard(
+                                            label: 'Pedas',
+                                            selected: controller
+                                                .foodCustomization
+                                                .isSpicy,
+                                            onTap: () =>
+                                                controller.setSpicy(true),
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 18),
-                                  const _SectionHeader(title: 'ADD-ON'),
-                                  const SizedBox(height: 10),
-                                  _AddOnCard(
-                                    label: 'Tambah Egg',
-                                    priceLabel:
-                                        '+ ${Formatters.currency(5000)}',
-                                    selected:
-                                        controller.foodCustomization.addEgg,
-                                    onTap: () => controller.setAddEgg(
-                                      !controller.foodCustomization.addEgg,
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
+                                    const SizedBox(height: 18),
+                                    const _SectionHeader(title: 'ADD-ON'),
+                                    const SizedBox(height: 10),
+                                    _AddOnCard(
+                                      label: 'Tambah Egg',
+                                      priceLabel:
+                                          '+ ${Formatters.currency(5000)}',
+                                      selected:
+                                          controller.foodCustomization.addEgg,
+                                      onTap: () => controller.setAddEgg(
+                                        !controller.foodCustomization.addEgg,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -310,22 +385,15 @@ class MenuDetailSheet extends StatelessWidget {
                 Container(
                   color: const Color(0xFFF6F1EB),
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
-                  child: Row(
-                    children: [
-                      _QtyStepper(
-                        qty: controller.qty,
-                        onDecrease: controller.decrement,
-                        onIncrease: controller.increment,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SizedBox(
+                  child: controller.isRedeemMode
+                      ? SizedBox(
+                          width: double.infinity,
                           height: 54,
                           child: ElevatedButton(
-                            onPressed: controller.addToCart,
+                            onPressed: () => _handleRedeemFlow(context),
                             style: ElevatedButton.styleFrom(
                               elevation: 0,
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: AppColors.teal,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -337,7 +405,7 @@ class MenuDetailSheet extends StatelessWidget {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                'TAMBAH • ${Formatters.currency(controller.totalPrice)}',
+                                'TUKARKAN • ${Formatters.commas(controller.totalRedeemPoints)} poin',
                                 style: AppTextStyles.button.copyWith(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
@@ -346,16 +414,241 @@ class MenuDetailSheet extends StatelessWidget {
                               ),
                             ),
                           ),
+                        )
+                      : Row(
+                          children: [
+                            _QtyStepper(
+                              qty: controller.qty,
+                              onDecrease: controller.decrement,
+                              onIncrease: controller.increment,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SizedBox(
+                                height: 54,
+                                child: ElevatedButton(
+                                  onPressed: controller.addToCart,
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'TAMBAH • ${Formatters.currency(controller.totalPrice)}',
+                                      style: AppTextStyles.button.copyWith(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.4,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _RedeemConfirmDialog extends StatelessWidget {
+  final MenuDetailController controller;
+
+  const _RedeemConfirmDialog({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: const Text(
+        'Konfirmasi Penukaran',
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            controller.item.name,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _dialogRow('Jumlah', '1 item'),
+          _dialogRow(
+            'Poin dipakai',
+            '${Formatters.commas(controller.totalRedeemPoints)} poin',
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Setelah dikonfirmasi, item akan masuk ke keranjang dengan harga Rp0 dan poin akan langsung dipotong.',
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(result: false),
+          child: const Text('Batal'),
+        ),
+        ElevatedButton(
+          onPressed: () => Get.back(result: true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.teal,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: const Text('Konfirmasi Tukar'),
+        ),
+      ],
+    );
+  }
+
+  Widget _dialogRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RedeemSuccessDialog extends StatelessWidget {
+  final String itemName;
+  final int pointsUsed;
+
+  const _RedeemSuccessDialog({
+    required this.itemName,
+    required this.pointsUsed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cart = Get.find<CartController>();
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: AppColors.tealLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.teal,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Penukaran Berhasil',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$itemName berhasil ditukar dengan ${Formatters.commas(pointsUsed)} poin.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Item sudah masuk ke keranjang dan siap dilanjutkan ke checkout.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Get.back();
+                  if (cart.isEmpty) return;
+                  Get.find<OrderController>().goToCheckout();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text('Lanjut ke Checkout'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text('Nanti Saja'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

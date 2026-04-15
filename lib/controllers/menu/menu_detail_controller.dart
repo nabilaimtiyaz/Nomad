@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 
+import '../../core/app_state.dart';
 import '../../data/models/menu_item_model.dart';
 import '../cart/cart_controller.dart';
 
@@ -7,11 +8,13 @@ class MenuDetailController extends GetxController {
   final MenuItem item;
   final void Function(int qty, String notes)? onAdd;
   final int initialQty;
+  final bool isRedeemMode;
 
   MenuDetailController({
     required this.item,
     this.onAdd,
     this.initialQty = 1,
+    this.isRedeemMode = false,
   });
 
   int qty = 1;
@@ -21,23 +24,24 @@ class MenuDetailController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    qty = initialQty > 0 ? initialQty : 1;
+    qty = isRedeemMode ? 1 : (initialQty > 0 ? initialQty : 1);
 
-    /// default normal semua
     drinkCustomization = DrinkCustomization.defaults();
     foodCustomization = FoodCustomization.defaults();
   }
 
   bool get isDrink => item.isDrink;
   bool get isFoodCustomizable => item.isFood;
-  bool get hasCustomization => isDrink || isFoodCustomizable;
+  bool get hasCustomization => !isRedeemMode && (isDrink || isFoodCustomizable);
 
   void increment() {
+    if (isRedeemMode) return;
     qty++;
     update();
   }
 
   void decrement() {
+    if (isRedeemMode) return;
     if (qty > 1) {
       qty--;
       update();
@@ -45,7 +49,7 @@ class MenuDetailController extends GetxController {
   }
 
   void setTemperature(String value) {
-    if (!isDrink) return;
+    if (!isDrink || isRedeemMode) return;
 
     if (value == 'hot') {
       drinkCustomization = drinkCustomization.copyWith(
@@ -63,7 +67,7 @@ class MenuDetailController extends GetxController {
   }
 
   void setIceLevel(String value) {
-    if (!isDrink) return;
+    if (!isDrink || isRedeemMode) return;
     if (drinkCustomization.temperature != 'ice') return;
 
     drinkCustomization = drinkCustomization.copyWith(
@@ -75,7 +79,7 @@ class MenuDetailController extends GetxController {
   }
 
   void setSugarLevel(String value) {
-    if (!isDrink) return;
+    if (!isDrink || isRedeemMode) return;
 
     drinkCustomization = drinkCustomization.copyWith(
       temperature: drinkCustomization.temperature,
@@ -86,20 +90,22 @@ class MenuDetailController extends GetxController {
   }
 
   void setSpicy(bool value) {
-    if (!isFoodCustomizable) return;
+    if (!isFoodCustomizable || isRedeemMode) return;
 
     foodCustomization = foodCustomization.copyWith(isSpicy: value);
     update();
   }
 
   void setAddEgg(bool value) {
-    if (!isFoodCustomizable) return;
+    if (!isFoodCustomizable || isRedeemMode) return;
 
     foodCustomization = foodCustomization.copyWith(addEgg: value);
     update();
   }
 
   int get unitPrice {
+    if (isRedeemMode) return item.price;
+
     if (isFoodCustomizable && foodCustomization.addEgg) {
       return item.price + 5000;
     }
@@ -108,7 +114,18 @@ class MenuDetailController extends GetxController {
 
   int get totalPrice => unitPrice * qty;
 
+  int _pointsFromAmount(int amount) {
+    if (amount <= 0) return 0;
+    return (amount / 1000).ceil();
+  }
+
+  int get redeemUnitPoints => _pointsFromAmount(item.price);
+
+  int get totalRedeemPoints => redeemUnitPoints;
+
   String get customizationKey {
+    if (isRedeemMode) return 'redeem';
+
     if (isDrink) {
       final temp = drinkCustomization.temperature;
       final ice = drinkCustomization.iceLevel ?? 'none';
@@ -126,14 +143,16 @@ class MenuDetailController extends GetxController {
   }
 
   String get notes {
+    if (isRedeemMode) return '';
+
     if (isDrink) {
-      final tempLabel =
-          drinkCustomization.temperature == 'ice' ? 'Ice' : 'Hot';
+      final tempLabel = drinkCustomization.temperature == 'ice' ? 'Ice' : 'Hot';
       final sugarLabel = _labelFromLevel(drinkCustomization.sugarLevel);
 
       if (drinkCustomization.temperature == 'ice') {
-        final iceLabel =
-            _labelFromLevel(drinkCustomization.iceLevel ?? 'normal');
+        final iceLabel = _labelFromLevel(
+          drinkCustomization.iceLevel ?? 'normal',
+        );
         return 'Temperature: $tempLabel | Ice: $iceLabel | Sugar: $sugarLabel';
       }
 
@@ -176,5 +195,41 @@ class MenuDetailController extends GetxController {
       customizationKey: customizationKey,
     );
     Get.back();
+  }
+
+  bool get canRedeem {
+    final appState = Get.find<AppStateController>();
+    if (!appState.isLoggedIn) return false;
+    return appState.user.loyaltyPoints >= totalRedeemPoints;
+  }
+
+  Future<String?> redeemWithPoints() async {
+    final appState = Get.find<AppStateController>();
+
+    if (!appState.isLoggedIn) {
+      return 'Kamu harus login dulu.';
+    }
+
+    if (!appState.canRedeemToday()) {
+      return 'Kamu sudah menukar reward hari ini. Coba lagi besok.';
+    }
+
+    final requiredPoints = totalRedeemPoints;
+
+    if (requiredPoints <= 0) {
+      return 'Poin redeem tidak valid.';
+    }
+
+    final success = appState.redeemPoints(requiredPoints);
+    if (!success) {
+      return 'Poin tidak cukup.';
+    }
+
+    // tandai sudah redeem hari ini
+    appState.markRedeemToday();
+    final cart = Get.find<CartController>();
+    cart.addItem(item, 1, '', unitPrice: 0, customizationKey: 'redeem');
+
+    return null;
   }
 }

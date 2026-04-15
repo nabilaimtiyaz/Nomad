@@ -45,6 +45,10 @@ class VoucherController extends GetxController {
       return 'Kode voucher tidak boleh kosong';
     }
 
+    if (_appState.checkoutPointsToUse > 0) {
+      return 'Tidak bisa pakai voucher dan poin bersamaan';
+    }
+
     try {
       final data = await _repository.validateVoucher(normalized);
 

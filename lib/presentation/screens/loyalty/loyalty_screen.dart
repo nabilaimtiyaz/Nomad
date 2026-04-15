@@ -2,20 +2,16 @@ import 'package:flutter/material.dart' hide MenuController;
 import 'package:get/get.dart';
 
 import '../../../controllers/menu/menu_controller.dart';
+import '../../../controllers/menu/menu_detail_controller.dart';
 import '../../../core/app_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/menu_item_model.dart';
 import '../../../data/models/user_model.dart';
+import '../menu/menu_detail_sheet.dart';
 
 class LoyaltyScreen extends StatelessWidget {
   const LoyaltyScreen({super.key});
-
-  static const _tiers = [
-    ('silver', 'Silver', '1 poin / Rp1.000'),
-    ('gold', 'Gold', '2 poin / Rp1.000'),
-    ('platinum', 'Platinum', '3 poin / Rp1.000'),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -49,190 +45,178 @@ class LoyaltyScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: const Color(0xFFF8F3EF),
           body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
               children: [
-                _TopBar(user: user),
-                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(28),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _TopBar(user: user),
+                      const SizedBox(height: 20),
+                      _HeroPointsCard(points: points, tierLabel: tierLabel),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                    children: [
+                      _MembershipProgressCard(
+                        tier: tier,
+                        totalEarnedPoints: user.totalEarnedPoints,
+                        remainingToGold: remainingToGold,
+                        remainingToPlatinum: remainingToPlatinum,
+                      ),
+                      const SizedBox(height: 24),
 
-                /// HEADER POIN TETAP
-                _PointsCard(points: points, tier: tierLabel),
-
-                const SizedBox(height: 28),
-
-                /// STATUS PATH
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Status Path',
+                      const Text(
+                        'Cara Kerja Poin',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: _showBenefitsInfo,
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.teal,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      const SizedBox(height: 14),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _ActionCard(
+                              title: 'Cara Mendapatkan',
+                              subtitle:
+                                  'Dapatkan 1 poin untuk setiap pembelanjaan Rp5.000. Berlaku kelipatan dan mengikuti tier membership.',
+                              icon: Icons.shopping_bag_outlined,
+                              iconColor: AppColors.teal,
+                              onTap: _showEarnInfo,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _ActionCard(
+                              title: 'Cara Menggunakan',
+                              subtitle:
+                                  'Gunakan 1 poin = Rp1.000 saat checkout, maksimal 10% dari subtotal dan tidak bisa digabung voucher.',
+                              icon: Icons.account_balance_wallet_outlined,
+                              iconColor: AppColors.primary,
+                              onTap: _showUsePointsInfo,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: const Text(
-                        'View Benefits',
+
+                      const SizedBox(height: 28),
+
+                      const Text(
+                        'Menu Rewards',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Tukarkan poinmu dengan menu favorit secara langsung.',
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tier == 'platinum'
-                      ? 'Kamu sudah berada di Platinum status'
-                      : tier == 'gold'
-                      ? '$remainingToPlatinum koin to Platinum status'
-                      : '$remainingToGold koin to Gold status',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _StatusPathCard(currentTier: tier),
+                      const SizedBox(height: 14),
 
-                const SizedBox(height: 30),
+                      Obx(() {
+                        final menus = menuController.menus;
 
-                /// CURATED EARNING
-                const Text(
-                  'Curated Earning',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ActionCard(
-                        title: 'Earn Daily',
-                        subtitle: 'Lihat cara mendapatkan poin loyalty Nomad.',
-                        icon: Icons.shopping_bag_outlined,
-                        iconColor: AppColors.teal,
+                        if (menuController.isLoading.value) {
+                          return const SizedBox(
+                            height: 170,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        if (menus.isEmpty) {
+                          return const SizedBox(
+                            height: 120,
+                            child: Center(
+                              child: Text(
+                                'Menu belum tersedia',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        final displayMenus = menus
+                            .where((menu) => menu.isAvailable)
+                            .take(6)
+                            .toList();
+
+                        if (displayMenus.isEmpty) {
+                          return const SizedBox(
+                            height: 120,
+                            child: Center(
+                              child: Text(
+                                'Menu belum tersedia',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return SizedBox(
+                          height: 180,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: displayMenus.length,
+                            itemBuilder: (context, index) {
+                              final menu = displayMenus[index];
+                              return _MenuRewardCard(menu: menu);
+                            },
+                          ),
+                        );
+                      }),
+
+                      const SizedBox(height: 28),
+
+                      const Text(
+                        'Pusat Bantuan',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _InquiryItem(
+                        icon: Icons.info_outline_rounded,
+                        title: 'Syarat & Ketentuan Poin',
+                        onTap: _showTermsInfo,
+                      ),
+                      _InquiryItem(
+                        icon: Icons.payments_outlined,
+                        title: 'Aturan Voucher & Poin',
+                        onTap: _showVoucherInfo,
+                      ),
+                      _InquiryItem(
+                        icon: Icons.help_outline_rounded,
+                        title: 'Panduan Program Rewards',
                         onTap: _showEarnInfo,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ActionCard(
-                        title: 'Instant Value',
-                        subtitle:
-                            'Gunakan poin saat checkout sebagai alat bayar.',
-                        icon: Icons.card_giftcard_rounded,
-                        iconColor: AppColors.primary,
-                        onTap: _showUsePointsInfo,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 28),
-
-                /// MENU BASED REWARDS
-                const Text(
-                  'Nomad Menu in Points',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Obx(() {
-                  final menus = menuController.menus;
-
-                  if (menuController.isLoading.value) {
-                    return const SizedBox(
-                      height: 140,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
-                  if (menus.isEmpty) {
-                    return const SizedBox(
-                      height: 120,
-                      child: Center(
-                        child: Text(
-                          'Menu belum tersedia',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    );
-                  }
-
-                  final displayMenus = menus
-                      .where((menu) => menu.isAvailable)
-                      .take(6)
-                      .toList();
-
-                  if (displayMenus.isEmpty) {
-                    return const SizedBox(
-                      height: 120,
-                      child: Center(
-                        child: Text(
-                          'Menu belum tersedia',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return SizedBox(
-                    height: 155,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: displayMenus.length,
-                      itemBuilder: (context, index) {
-                        final menu = displayMenus[index];
-                        return _MenuRewardCard(menu: menu);
-                      },
-                    ),
-                  );
-                }),
-
-                const SizedBox(height: 30),
-
-                /// INQUIRIES
-                const Text(
-                  'Inquiries',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _InquiryItem(
-                  icon: Icons.info_outline_rounded,
-                  title: 'Cara Mendapatkan Poin',
-                  onTap: _showEarnInfo,
-                ),
-                _InquiryItem(
-                  icon: Icons.payments_outlined,
-                  title: 'Cara Menggunakan Poin',
-                  onTap: _showUsePointsInfo,
-                ),
-                _InquiryItem(
-                  icon: Icons.discount_outlined,
-                  title: 'Aturan Voucher & Poin',
-                  onTap: _showVoucherInfo,
                 ),
               ],
             ),
@@ -242,24 +226,9 @@ class LoyaltyScreen extends StatelessWidget {
     );
   }
 
-  static void _showBenefitsInfo() {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: const Text(
-          'Tier loyalty Nomad:\n\n'
-          '• Silver: 1 poin / Rp1.000\n'
-          '• Gold: 2 poin / Rp1.000\n'
-          '• Platinum: 3 poin / Rp1.000\n\n'
-          'Naik tier berdasarkan total poin yang pernah didapatkan.',
-          style: TextStyle(height: 1.6),
-        ),
-      ),
-    );
+  static int _rewardPointsFromPrice(int price) {
+    if (price <= 0) return 0;
+    return (price / 1000).ceil();
   }
 
   static void _showEarnInfo() {
@@ -272,11 +241,15 @@ class LoyaltyScreen extends StatelessWidget {
         ),
         child: const Text(
           'Cara mendapatkan poin:\n\n'
-          '• Silver: 1 poin / Rp1.000\n'
-          '• Gold: 2 poin / Rp1.000\n'
-          '• Platinum: 3 poin / Rp1.000\n\n'
-          'Poin didapat dari transaksi yang memenuhi syarat loyalty Nomad.\n'
-          'Jika menggunakan voucher atau poin, transaksi tidak mendapatkan poin baru.',
+          '• Dapatkan 1 poin untuk setiap pembelanjaan Rp5.000\n'
+          '• Berlaku kelipatan sesuai nilai transaksi\n'
+          '• Perhitungan poin didasarkan pada jumlah pembayaran akhir\n'
+          '• Transaksi yang menggunakan voucher atau poin tidak mendapatkan poin baru\n'
+          '• Poin akan masuk setelah transaksi selesai\n\n'
+          'Tier membership:\n'
+          '• Silver: 1x poin\n'
+          '• Gold: 2x poin\n'
+          '• Platinum: 3x poin',
           style: TextStyle(height: 1.6),
         ),
       ),
@@ -293,11 +266,33 @@ class LoyaltyScreen extends StatelessWidget {
         ),
         child: const Text(
           'Cara menggunakan poin:\n\n'
-          '• 1 poin = Rp1\n'
-          '• Poin digunakan saat checkout sebagai alat bayar\n'
-          '• Berlaku untuk subtotal produk\n'
-          '• Tidak berlaku untuk ongkir\n'
-          '• Tidak memberi diskon tambahan',
+          '• 1 poin = Rp1.000 untuk potongan pembayaran saat checkout\n'
+          '• Maksimal penggunaan poin adalah 10% dari subtotal transaksi\n'
+          '• Poin tidak dapat digunakan bersamaan dengan voucher\n'
+          '• Transaksi yang menggunakan poin tidak mendapatkan poin baru\n'
+          '• Poin juga dapat ditukar langsung dengan menu reward tertentu\n'
+          '• Masa berlaku poin adalah 12 bulan sejak diperoleh',
+          style: TextStyle(height: 1.6),
+        ),
+      ),
+    );
+  }
+
+  static void _showTermsInfo() {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: const Text(
+          'Syarat & ketentuan poin Nomad:\n\n'
+          '• Poin berlaku selama 12 bulan sejak diperoleh\n'
+          '• Poin tidak dapat diuangkan atau dipindahtangankan\n'
+          '• Poin tidak dapat digabung dengan voucher dalam satu transaksi\n'
+          '• Jika transaksi dibatalkan, poin yang digunakan akan dikembalikan dan poin yang didapat akan dibatalkan\n'
+          '• Nomad berhak menarik poin apabila ditemukan penyalahgunaan program',
           style: TextStyle(height: 1.6),
         ),
       ),
@@ -314,9 +309,10 @@ class LoyaltyScreen extends StatelessWidget {
         ),
         child: const Text(
           'Aturan voucher dan poin:\n\n'
-          '• Voucher dan poin tidak bisa digunakan bersamaan\n'
-          '• Jika pakai voucher, tidak mendapatkan poin baru\n'
-          '• Jika pakai poin, tidak mendapatkan poin baru',
+          '• Voucher dan poin tidak dapat digunakan bersamaan\n'
+          '• Jika menggunakan voucher, transaksi tidak mendapatkan poin baru\n'
+          '• Jika menggunakan poin, transaksi tidak mendapatkan poin baru\n'
+          '• Voucher digunakan untuk promo, sedangkan poin digunakan untuk reward loyalitas',
           style: TextStyle(height: 1.6),
         ),
       ),
@@ -369,26 +365,21 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _PointsCard extends StatelessWidget {
+class _HeroPointsCard extends StatelessWidget {
   final int points;
-  final String tier;
+  final String tierLabel;
 
-  const _PointsCard({required this.points, required this.tier});
+  const _HeroPointsCard({required this.points, required this.tierLabel});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: Colors.white.withOpacity(0.12),
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.20),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,7 +396,7 @@ class _PointsCard extends StatelessWidget {
           Text(
             Formatters.commas(points),
             style: const TextStyle(
-              fontSize: 36,
+              fontSize: 38,
               fontWeight: FontWeight.w900,
               color: Colors.white,
               height: 1,
@@ -413,13 +404,96 @@ class _PointsCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '$tier • 1 poin = Rp1',
+            '$tierLabel Member',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MembershipProgressCard extends StatelessWidget {
+  final String tier;
+  final int totalEarnedPoints;
+  final int remainingToGold;
+  final int remainingToPlatinum;
+
+  const _MembershipProgressCard({
+    required this.tier,
+    required this.totalEarnedPoints,
+    required this.remainingToGold,
+    required this.remainingToPlatinum,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final int nextTarget = tier == 'gold'
+        ? 5000
+        : tier == 'platinum'
+        ? 5000
+        : 2500;
+
+    final int currentBase = tier == 'gold'
+        ? 2500
+        : tier == 'platinum'
+        ? 5000
+        : 0;
+
+    final double progress = tier == 'platinum'
+        ? 1
+        : ((totalEarnedPoints - currentBase) / (nextTarget - currentBase))
+              .clamp(0, 1)
+              .toDouble();
+
+    final String subtitle = tier == 'platinum'
+        ? 'Kamu sudah berada di tier tertinggi.'
+        : tier == 'gold'
+        ? '$remainingToPlatinum poin lagi menuju Platinum.'
+        : '$remainingToGold poin lagi menuju Gold.';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Membership Progress',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 10,
+              backgroundColor: const Color(0xFFE9E0D8),
+              valueColor: const AlwaysStoppedAnimation(AppColors.teal),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _StatusPathCard(currentTier: tier),
         ],
       ),
     );
@@ -631,95 +705,139 @@ class _MenuRewardCard extends StatelessWidget {
 
   const _MenuRewardCard({required this.menu});
 
-  @override
-  Widget build(BuildContext context) {
-    final points = menu.price;
+  void _openRedeemSheet() {
+    final appState = Get.find<AppStateController>();
 
-    return Container(
-      width: 150,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1EBE6),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: menu.imageUrl.trim().isEmpty
-                ? Container(
-                    height: 72,
-                    width: double.infinity,
-                    color: Colors.grey.shade300,
-                    child: const Center(
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: 20,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  )
-                : menu.imageUrl.startsWith('http')
-                ? Image.network(
-                    menu.imageUrl,
-                    height: 72,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 72,
-                      width: double.infinity,
-                      color: Colors.grey.shade300,
-                      child: const Center(
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          size: 20,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  )
-                : Image.asset(
-                    menu.imageUrl,
-                    height: 72,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 72,
-                      width: double.infinity,
-                      color: Colors.grey.shade300,
-                      child: const Center(
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          size: 20,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
+    if (!appState.canRedeemToday()) {
+      Get.dialog(
+        AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-          const SizedBox(height: 10),
-          Text(
-            menu.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+          title: const Text(
+            'Reward Tidak Tersedia',
+            style: TextStyle(
               fontWeight: FontWeight.w800,
-              fontSize: 13,
               color: AppColors.textPrimary,
             ),
           ),
-          const Spacer(),
-          Text(
-            '${Formatters.commas(points)} pts',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.teal,
+          content: const Text(
+            'Kamu sudah menukar 1 reward hari ini. Silakan coba lagi besok.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: AppColors.textSecondary,
             ),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Get.back(), child: const Text('Tutup')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    Get.bottomSheet(
+      MenuDetailSheet(
+        controller: MenuDetailController(item: menu, isRedeemMode: true),
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final points = LoyaltyScreen._rewardPointsFromPrice(menu.price);
+
+    return GestureDetector(
+      onTap: _openRedeemSheet,
+      child: Container(
+        width: 150,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1EBE6),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: menu.imageUrl.trim().isEmpty
+                  ? Container(
+                      height: 72,
+                      width: double.infinity,
+                      color: Colors.grey.shade300,
+                      child: const Center(
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 20,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    )
+                  : menu.imageUrl.startsWith('http')
+                  ? Image.network(
+                      menu.imageUrl,
+                      height: 72,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 72,
+                        width: double.infinity,
+                        color: Colors.grey.shade300,
+                        child: const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            size: 20,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Image.asset(
+                      menu.imageUrl,
+                      height: 72,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 72,
+                        width: double.infinity,
+                        color: Colors.grey.shade300,
+                        child: const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            size: 20,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              menu.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${Formatters.commas(points)} poin',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.teal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -29,6 +29,8 @@ class OrderController extends GetxController {
 
   RealtimeChannel? _channel;
 
+  bool _lastLoginState = false;
+
   VoucherController get voucherController {
     if (Get.isRegistered<VoucherController>()) {
       return Get.find<VoucherController>();
@@ -46,18 +48,33 @@ class OrderController extends GetxController {
 
   int get maxPointsUsable {
     if (!appState.isLoggedIn) return 0;
-    return appState.user.loyaltyPoints.clamp(0, subtotalPreview);
+
+    final maxByBalance = appState.user.loyaltyPoints;
+    final maxByBusinessRule = subtotalPreview ~/ 10000; // 10% subtotal, 1 poin = Rp1.000
+
+    return maxByBalance < maxByBusinessRule
+        ? maxByBalance
+        : maxByBusinessRule;
   }
 
   int get grandTotalPreview {
-    final afterVoucher =
-        (subtotalPreview - voucherDiscountPreview).clamp(0, 1 << 31);
-    final afterPoints = (afterVoucher - pointsToUse).clamp(0, 1 << 31);
+    final afterVoucher = (subtotalPreview - voucherDiscountPreview).clamp(
+      0,
+      1 << 31,
+    );
+    final afterPoints = (afterVoucher - pointsToUse * 1000).clamp(0, 1 << 31);
     return afterPoints;
   }
 
   String? get appliedVoucherCode =>
       voucherController.appliedVoucher.value?.code;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _lastLoginState = appState.isLoggedIn;
+    appState.addListener(_handleAppStateChanged);
+  }
 
   @override
   void onReady() {
@@ -70,8 +87,29 @@ class OrderController extends GetxController {
     }
   }
 
+  void _handleAppStateChanged() {
+    final isLoggedIn = appState.isLoggedIn;
+
+    if (isLoggedIn && !_lastLoginState) {
+      _lastLoginState = true;
+      fetchOrders();
+      return;
+    }
+
+    if (!isLoggedIn && _lastLoginState) {
+      _lastLoginState = false;
+      orders = [];
+      currentOrder = null;
+      isCheckoutMode = false;
+      _channel?.unsubscribe();
+      update();
+    }
+  }
+
   Future<void> fetchOrders() async {
     try {
+      if (!appState.isLoggedIn) return;
+
       final userId = appState.user.id;
       if (userId.isEmpty) return;
 
@@ -139,7 +177,8 @@ class OrderController extends GetxController {
       return;
     }
 
-    appState.setCheckoutPointsToUse(points.clamp(0, maxPointsUsable));
+    final validPoints = points.clamp(0, maxPointsUsable);
+    appState.setCheckoutPointsToUse(validPoints);
     update();
   }
 
@@ -244,10 +283,9 @@ class OrderController extends GetxController {
           appliedVoucherCode != null && appliedVoucherCode!.trim().isNotEmpty;
       final isUsingPoints = pointsToUse > 0;
 
-      final earnedPoints =
-          (!isUsingVoucher && !isUsingPoints)
-              ? appState.calculateEarnedPoints(subtotal)
-              : 0;
+      final earnedPoints = (!isUsingVoucher && !isUsingPoints)
+          ? appState.calculateEarnedPoints(subtotal)
+          : 0;
 
       final order = OrderModel(
         id: '',
@@ -373,6 +411,7 @@ class OrderController extends GetxController {
 
   @override
   void onClose() {
+    appState.removeListener(_handleAppStateChanged);
     _channel?.unsubscribe();
     super.onClose();
   }
