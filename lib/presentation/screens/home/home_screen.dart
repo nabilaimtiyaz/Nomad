@@ -20,6 +20,14 @@ bool _isAllowedHomeCategory(String name) {
       normalized == 'dessert';
 }
 
+const List<_PromoSlideData> _dummyPromoSlides = [
+  _PromoSlideData(
+    title: 'Dicount 30%',
+    subtitle: 'Khusus minggu ini',
+    imageUrl: 'promo/promo1.jpeg',
+  ),
+];
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -30,7 +38,7 @@ class HomeScreen extends StatelessWidget {
     final cartCtrl = Get.find<CartController>();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8F3EF),
       body: Obx(() {
         if (homeCtrl.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
@@ -71,294 +79,61 @@ class HomeScreen extends StatelessWidget {
         }
 
         final selectedBranch = homeCtrl.selectedBranch.value;
-        final userName =
-            appState.isLoggedIn ? appState.user.name.trim() : 'Guest';
-        final firstName = userName.isEmpty ? 'Guest' : userName.split(' ').first;
+        final userName = appState.isLoggedIn
+            ? appState.user.name.trim()
+            : 'Guest';
+        final firstName = userName.isEmpty
+            ? 'Guest'
+            : userName.split(' ').first;
+        final points = appState.isLoggedIn ? appState.user.loyaltyPoints : 0;
+
+        final curatedSlides = _dummyPromoSlides;
 
         return CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
-              child: Container(
-                color: AppColors.primary,
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 16,
-                  left: 20,
-                  right: 20,
-                  bottom: 40,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'WELCOME BACK',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Halo, $firstName!',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          GestureDetector(
-                            onTap: () => _showBranchPicker(context, homeCtrl),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on_rounded,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      selectedBranch?.name ?? 'Pilih Lokasi',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        firstName.isNotEmpty ? firstName[0].toUpperCase() : 'G',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Transform.translate(
-                offset: const Offset(0, -20),
+              child: SafeArea(
+                bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(
-                            Icons.stars_rounded,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Nomad Rewards',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${appState.isLoggedIn ? appState.user.loyaltyPoints : 0} Poin tersedia',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Text(
-                          'View Benefits >',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Column(
+                    children: [
+                      _TopHeaderCard(
+                        branchName: selectedBranch?.name ?? 'Pilih Cabang',
+                        onBranchTap: () => _showBranchPicker(context, homeCtrl),
+                        firstName: firstName,
+                      ),
+                      const SizedBox(height: 16),
+                      _MembershipCard(
+                        points: points,
+                        onTap: () => Get.find<MainController>().changeTab(2),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Curated Offers',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
+                    if (curatedSlides.isNotEmpty) ...[
+                      const Text(
+                        'Weekly Curations',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      height: 144,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: -10,
-                            right: -10,
-                            child: Container(
-                              width: 96,
-                              height: 96,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: -16,
-                            left: -8,
-                            child: Container(
-                              width: 86,
-                              height: 86,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.all(18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '25% OFF',
-                                  style: TextStyle(
-                                    fontSize: 30,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Morning Brew Deal',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(height: 6),
-                                Text(
-                                  'Get your favorite coffee before 10 AM and enjoy exclusive savings.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white70,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                Spacer(),
-                                Align(
-                                  alignment: Alignment.bottomRight,
-                                  child: Text(
-                                    'Limited Time',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Browse Categories',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 14),
+                      _WeeklyCurationsSlider(slides: curatedSlides),
+                      const SizedBox(height: 26),
+                    ],
                     SizedBox(
-                      height: 92,
+                      height: 102,
                       child: (() {
                         final filteredCategories = homeCtrl.categories
                             .where((c) => _isAllowedHomeCategory(c.name))
@@ -368,9 +143,7 @@ class HomeScreen extends StatelessWidget {
                           return const Center(
                             child: Text(
                               'Kategori belum tersedia',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
+                              style: TextStyle(color: AppColors.textSecondary),
                             ),
                           );
                         }
@@ -379,7 +152,7 @@ class HomeScreen extends StatelessWidget {
                           scrollDirection: Axis.horizontal,
                           itemCount: filteredCategories.length,
                           separatorBuilder: (_, __) =>
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 14),
                           itemBuilder: (context, index) {
                             final category = filteredCategories[index];
                             return _CategoryButton(
@@ -399,56 +172,46 @@ class HomeScreen extends StatelessWidget {
                         );
                       })(),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 26),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Popular Right Now',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w700,
+                        const Expanded(
+                          child: Text(
+                            'Popular Nomads',
+                            style: TextStyle(
+                              fontSize: 28,
+                              height: 1,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                         if (homeCtrl.isRefreshingMenus.value)
                           const SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 18,
+                            height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          const Text(
+                            'FILTER',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                            ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     if (selectedBranch == null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Text(
-                          'Belum ada cabang yang dipilih.',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      )
+                      const _InfoCard(message: 'Belum ada cabang yang dipilih.')
                     else if (homeCtrl.featuredMenus.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          homeCtrl.errorMessage.value.isNotEmpty
-                              ? homeCtrl.errorMessage.value
-                              : 'Menu unggulan belum tersedia.',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
+                      _InfoCard(
+                        message: homeCtrl.errorMessage.value.isNotEmpty
+                            ? homeCtrl.errorMessage.value
+                            : 'Menu unggulan belum tersedia.',
                       )
                     else
                       GridView.builder(
@@ -457,11 +220,11 @@ class HomeScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisExtent: 230,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                        ),
+                              crossAxisCount: 2,
+                              mainAxisExtent: 246,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                            ),
                         itemBuilder: (context, index) {
                           final item = homeCtrl.featuredMenus[index];
                           return _MenuCard(
@@ -471,7 +234,7 @@ class HomeScreen extends StatelessWidget {
                           );
                         },
                       ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 26),
                   ],
                 ),
               ),
@@ -489,7 +252,7 @@ class HomeScreen extends StatelessWidget {
       builder: (sheetContext) => Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Column(
@@ -502,7 +265,7 @@ class HomeScreen extends StatelessWidget {
                 'Pilih Lokasi Cabang',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
               ),
@@ -514,7 +277,8 @@ class HomeScreen extends StatelessWidget {
                 onTap: branch.isOpen
                     ? () async {
                         await homeCtrl.selectBranch(branch);
-                        await Get.find<MenuController>().reloadForBranchChange();
+                        await Get.find<MenuController>()
+                            .reloadForBranchChange();
                         Navigator.pop(sheetContext);
                       }
                     : null,
@@ -524,17 +288,27 @@ class HomeScreen extends StatelessWidget {
                     vertical: 16,
                   ),
                   color: isSelected
-                      ? AppColors.primaryLight.withOpacity(0.2)
+                      ? AppColors.primaryLight.withOpacity(0.10)
                       : Colors.transparent,
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.storefront_rounded,
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primaryLight.withOpacity(0.18)
+                              : AppColors.surfaceGrey,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.location_on_rounded,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                        ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,7 +317,7 @@ class HomeScreen extends StatelessWidget {
                               branch.name,
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                                 color: isSelected
                                     ? AppColors.primary
                                     : AppColors.textPrimary,
@@ -564,8 +338,8 @@ class HomeScreen extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                          horizontal: 10,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
                           color: branch.isOpen
@@ -577,7 +351,7 @@ class HomeScreen extends StatelessWidget {
                           branch.isOpen ? 'Buka' : 'Tutup',
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                             color: branch.isOpen
                                 ? AppColors.teal
                                 : AppColors.textSecondary,
@@ -591,6 +365,429 @@ class HomeScreen extends StatelessWidget {
             }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TopHeaderCard extends StatelessWidget {
+  final String branchName;
+  final VoidCallback onBranchTap;
+  final String firstName;
+
+  const _TopHeaderCard({
+    required this.branchName,
+    required this.onBranchTap,
+    required this.firstName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1EBE6),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: onBranchTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8DEDE),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.location_on_outlined,
+                color: AppColors.primary,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: InkWell(
+              onTap: onBranchTap,
+              borderRadius: BorderRadius.circular(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'CURRENT BRANCH',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.9,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    branchName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primary,
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.black,
+              child: Text(
+                firstName.isNotEmpty ? firstName[0].toUpperCase() : 'G',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MembershipCard extends StatelessWidget {
+  final int points;
+  final VoidCallback onTap;
+
+  const _MembershipCard({required this.points, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const nextTierTarget = 2500;
+    final clampedProgress = points <= 0
+        ? 0.0
+        : (points / nextTierTarget).clamp(0.0, 1.0);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primaryDark, AppColors.primary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.22),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MEMBERSHIP TIER',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Silver Nomad',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    'ID: 8829-102',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Progress to Gold',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${Formatters.commas(points)}/${Formatters.commas(nextTierTarget)} pts',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                value: clampedProgress,
+                minHeight: 7,
+                backgroundColor: Colors.white24,
+                color: const Color(0xFF8FE8E0),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              points >= nextTierTarget
+                  ? 'Kamu sudah siap naik tier.'
+                  : 'Earn ${Formatters.commas(nextTierTarget - points)} more points to unlock more benefits.',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.white70,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PromoSlideData {
+  final String title;
+  final String subtitle;
+  final String imageUrl;
+
+  const _PromoSlideData({
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+  });
+}
+
+class _WeeklyCurationsSlider extends StatefulWidget {
+  final List<_PromoSlideData> slides;
+
+  const _WeeklyCurationsSlider({required this.slides});
+
+  @override
+  State<_WeeklyCurationsSlider> createState() => _WeeklyCurationsSliderState();
+}
+
+class _WeeklyCurationsSliderState extends State<_WeeklyCurationsSlider> {
+  late final PageController _pageController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.88);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 180,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: widget.slides.length,
+            onPageChanged: (index) {
+              setState(() => _currentIndex = index);
+            },
+            itemBuilder: (context, index) {
+              final slide = widget.slides[index];
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: index == widget.slides.length - 1 ? 0 : 12,
+                ),
+                child: _PromoImageCard(slide: slide),
+              );
+            },
+          ),
+        ),
+        if (widget.slides.length > 1) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.slides.length, (index) {
+              final isActive = index == _currentIndex;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: isActive ? 20 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.primary
+                      : AppColors.primary.withOpacity(0.20),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PromoImageCard extends StatelessWidget {
+  final _PromoSlideData slide;
+
+  const _PromoImageCard({required this.slide});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceGrey,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(child: _MenuImage(imageUrl: slide.imageUrl)),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.10),
+                    Colors.black.withOpacity(0.20),
+                    Colors.black.withOpacity(0.70),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'PROMO MINGGU INI',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  slide.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    height: 1.1,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  slide.subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final String message;
+
+  const _InfoCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(color: AppColors.textSecondary),
       ),
     );
   }
@@ -615,10 +812,7 @@ class _MenuCard extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => MenuDetailSheet(
-        controller: MenuDetailController(
-          item: item,
-          initialQty: 1,
-        ),
+        controller: MenuDetailController(item: item, initialQty: 1),
       ),
     );
   }
@@ -632,44 +826,64 @@ class _MenuCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: item.isAvailable ? () => _openDetail(context) : null,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Stack(
                   children: [
-                    Container(
-                      width: double.infinity,
-                      color: AppColors.surfaceGrey,
-                      child: _MenuImage(imageUrl: item.imageUrl),
+                    Positioned.fill(
+                      child: Container(
+                        color: AppColors.surfaceGrey,
+                        child: _MenuImage(imageUrl: item.imageUrl),
+                      ),
+                    ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.92),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.favorite_border_rounded,
+                          size: 18,
+                          color: item.isAvailable
+                              ? AppColors.primary
+                              : AppColors.textHint,
+                        ),
+                      ),
                     ),
                     if (!item.isAvailable)
                       Positioned.fill(
                         child: Container(
-                          color: Colors.black.withOpacity(0.35),
+                          color: Colors.black.withOpacity(0.38),
                           alignment: Alignment.center,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
+                              horizontal: 12,
+                              vertical: 7,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.redAccent,
+                              color: AppColors.error,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
@@ -677,7 +891,7 @@ class _MenuCard extends StatelessWidget {
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
@@ -687,19 +901,19 @@ class _MenuCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.name,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
+                        height: 1.2,
                         color: item.isAvailable
                             ? AppColors.textPrimary
                             : AppColors.textHint,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
+                        fontWeight: FontWeight.w800,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -712,50 +926,50 @@ class _MenuCard extends StatelessWidget {
                         color: item.isAvailable
                             ? AppColors.primary
                             : AppColors.textHint,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w900,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (qty > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.tealLight,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${qty} di cart',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: AppColors.teal,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          )
-                        else
-                          const SizedBox.shrink(),
+                        Expanded(
+                          child: qty > 0
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 7,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.tealLight,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '$qty di cart',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.teal,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                        const SizedBox(width: 10),
                         GestureDetector(
                           onTap: _quickAdd,
                           child: Container(
-                            width: 30,
-                            height: 30,
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
                               color: item.isAvailable
-                                  ? AppColors.teal
+                                  ? AppColors.primary
                                   : AppColors.surfaceGrey,
-                              borderRadius: BorderRadius.circular(9),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
                               Icons.add_rounded,
-                              size: 18,
+                              size: 20,
                               color: Colors.white,
                             ),
                           ),
@@ -784,7 +998,7 @@ class _MenuImage extends StatelessWidget {
       return const Center(
         child: Icon(
           Icons.local_cafe_rounded,
-          size: 36,
+          size: 38,
           color: AppColors.textHint,
         ),
       );
@@ -829,32 +1043,34 @@ class _CategoryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
       child: SizedBox(
-        width: 72,
+        width: 82,
         child: Column(
           children: [
             Container(
-              width: 54,
-              height: 54,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1EBE6),
+                borderRadius: BorderRadius.circular(16),
               ),
               alignment: Alignment.center,
-              child: Icon(icon, size: 24, color: AppColors.textPrimary),
+              child: Icon(icon, size: 26, color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
-              label,
+              label.toUpperCase(),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 11,
                 color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
               ),
             ),
           ],

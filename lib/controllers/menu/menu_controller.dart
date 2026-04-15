@@ -14,14 +14,15 @@ class MenuController extends GetxController {
   final categories = <Category>[].obs;
 
   final isLoading = false.obs;
-  final selectedType = 'all'.obs; // Sekarang menyimpan ID kategori
+  final selectedType = 'all'.obs;
   final searchQuery = ''.obs;
   final errorMessage = ''.obs;
+
+  String? _lastLoadedBranchId;
 
   @override
   void onInit() {
     super.onInit();
-    // Jika Sidebar / Search berubah, jalankan filter lokal
     everAll([selectedType, searchQuery], (_) => _applyFilters());
     loadInitialData();
   }
@@ -43,9 +44,14 @@ class MenuController extends GetxController {
   Future<void> fetchMenus() async {
     final branch = appState.selectedBranch;
     if (branch == null) {
-      errorMessage.value = 'Pilih cabang terlebih dahulu';
+      errorMessage.value = '';
       menus.clear();
       _allMenus.clear();
+      return;
+    }
+
+    if (_lastLoadedBranchId == branch.id && _allMenus.isNotEmpty) {
+      _applyFilters();
       return;
     }
 
@@ -53,9 +59,9 @@ class MenuController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
 
-      // Fetch semua menu tanpa filter categoryId dari server
       final result = await repo.getMenus(branchId: branch.id);
 
+      _lastLoadedBranchId = branch.id;
       _allMenus.assignAll(result);
       _applyFilters();
     } catch (e) {
@@ -69,15 +75,14 @@ class MenuController extends GetxController {
 
   void _applyFilters() {
     try {
-      var filtered = _allMenus.where((item) {
-        final name = (item.name ?? '').toString().toLowerCase();
-        final desc = (item.description ?? '').toString().toLowerCase();
-        final query = searchQuery.value.toLowerCase();
+      final query = searchQuery.value.toLowerCase();
 
-        // 1. Filter Pencarian (Search Bar)
+      final filtered = _allMenus.where((item) {
+        final name = item.name.toLowerCase();
+        final desc = item.description.toLowerCase();
+
         final matchesSearch = name.contains(query) || desc.contains(query);
 
-        // 2. Filter Tipe Sidebar (Mencocokkan UUID)
         bool matchesType = true;
         if (selectedType.value != 'all') {
           matchesType = item.categoryId == selectedType.value;
@@ -94,6 +99,7 @@ class MenuController extends GetxController {
   }
 
   Future<void> reloadForBranchChange() async {
+    _lastLoadedBranchId = null;
     await fetchMenus();
   }
 }

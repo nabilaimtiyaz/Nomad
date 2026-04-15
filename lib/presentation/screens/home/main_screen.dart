@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../loyalty/loyalty_screen.dart';
 import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
 import '../profile/profile_screen.dart';
@@ -24,13 +25,19 @@ class MainScreen extends StatelessWidget {
     final screens = const [
       HomeScreen(),
       MenuScreen(),
+      LoyaltyScreen(),
       OrderHistoryScreen(),
       ProfileScreen(),
     ];
 
     const tabs = [
       ('Home', Icons.home_outlined, Icons.home_rounded),
-      ('Menu', Icons.restaurant_menu_rounded, Icons.restaurant_menu_rounded),
+      ('Menu', Icons.local_cafe_outlined, Icons.local_cafe_rounded),
+      (
+        'Rewards',
+        Icons.confirmation_number_outlined,
+        Icons.confirmation_number,
+      ),
       ('Orders', Icons.receipt_long_outlined, Icons.receipt_long_rounded),
       ('Profile', Icons.person_outline_rounded, Icons.person_rounded),
     ];
@@ -73,8 +80,9 @@ class MainScreen extends StatelessWidget {
         border: Border(top: BorderSide(color: AppColors.divider, width: 0.8)),
       ),
       child: SafeArea(
+        top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
           child: Row(
             children: List.generate(tabs.length, (i) {
               final active = ctrl.tabIndex == i;
@@ -94,12 +102,14 @@ class MainScreen extends StatelessWidget {
                             ? AppColors.primary
                             : AppColors.textSecondary,
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
                         label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: active
                               ? AppColors.primary
                               : AppColors.textSecondary,
@@ -220,7 +230,7 @@ class _FloatingCartBadge extends StatelessWidget {
               const SizedBox(width: 8),
               const Icon(
                 Icons.arrow_forward_ios_rounded,
-                size: 14,
+                size: 16,
                 color: AppColors.textSecondary,
               ),
             ],

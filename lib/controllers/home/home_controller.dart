@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide MenuController;
 import 'package:get/get.dart';
 
 import '../../core/app_state.dart';
@@ -8,6 +8,7 @@ import '../../data/models/branch_model.dart';
 import '../../data/models/menu_item_model.dart';
 import '../../data/repositories/branch_repository.dart';
 import '../../data/repositories/menu_repository.dart';
+import '../menu/menu_controller.dart';
 
 class HomeController extends GetxController {
   final BranchRepository branchRepository;
@@ -50,6 +51,11 @@ class HomeController extends GetxController {
       categories.assignAll(fetchedCategories);
 
       _setInitialBranch();
+
+      if (Get.isRegistered<MenuController>()) {
+        await Get.find<MenuController>().reloadForBranchChange();
+      }
+
       await loadFeaturedMenus();
     } catch (e) {
       errorMessage.value = e.toString().replaceFirst('Exception: ', '');
@@ -127,6 +133,11 @@ class HomeController extends GetxController {
 
     selectedBranch.value = branch;
     appState.setBranch(branch);
+
+    if (Get.isRegistered<MenuController>()) {
+      await Get.find<MenuController>().reloadForBranchChange();
+    }
+
     await loadFeaturedMenus();
   }
 

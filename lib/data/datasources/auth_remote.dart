@@ -28,8 +28,6 @@ class AuthRemote {
       if (user == null) {
         throw Exception('Register gagal. User tidak ditemukan.');
       }
-
-      // ❌ HAPUS INSERT DI SINI
     } on AuthException catch (error) {
       throw Exception(error.message);
     } catch (e) {
@@ -52,14 +50,12 @@ class AuthRemote {
         throw Exception('Login gagal.');
       }
 
-      // 🔥 CHECK PROFILE
       final existing = await client
           .from('users')
           .select()
           .eq('auth_id', user.id)
           .maybeSingle();
 
-      // 🔥 JIKA BELUM ADA → INSERT
       if (existing == null) {
         await client.from('users').insert({
           'auth_id': user.id,
@@ -68,7 +64,7 @@ class AuthRemote {
           'phone': user.userMetadata?['phone'] ?? '',
           'loyalty_points': 0,
           'total_earned_points': 0,
-          'membership_tier': 'bronze',
+          'membership_tier': 'silver',
         });
       }
 

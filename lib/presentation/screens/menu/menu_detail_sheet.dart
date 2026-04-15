@@ -9,175 +9,372 @@ import '../../../core/utils/formatters.dart';
 class MenuDetailSheet extends StatelessWidget {
   final MenuDetailController controller;
 
-  const MenuDetailSheet({
-    super.key,
-    required this.controller,
-  });
+  const MenuDetailSheet({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 44,
-              height: 5,
-              decoration: BoxDecoration(
-                color: AppColors.divider,
-                borderRadius: BorderRadius.circular(999),
-              ),
+    return GetBuilder<MenuDetailController>(
+      init: controller,
+      global: false,
+      builder: (controller) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFF6F1EB),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
             ),
-            const SizedBox(height: 14),
-            Flexible(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _MenuImage(imageUrl: controller.item.imageUrl),
-                    const SizedBox(height: 18),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            controller.item.name,
-                            style: AppTextStyles.heading2.copyWith(
-                              fontSize: 28,
-                              height: 1.15,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 52,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4DCD3),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Flexible(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x12000000),
+                            blurRadius: 18,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _MenuImageSection(imageUrl: controller.item.imageUrl),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    controller.item.name,
+                                    style: AppTextStyles.heading2.copyWith(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.05,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  Formatters.currency(controller.unitPrice),
+                                  textAlign: TextAlign.right,
+                                  style: AppTextStyles.priceLarge.copyWith(
+                                    color: AppColors.primary,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.15,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          Formatters.currency(controller.item.price),
-                          style: AppTextStyles.priceLarge.copyWith(
-                            color: AppColors.primary,
-                            height: 1.1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      controller.item.description.trim().isNotEmpty
-                          ? controller.item.description.trim()
-                          : 'Menu andalan Nomad dengan rasa khas yang dibuat segar dan siap dinikmati.',
-                      style: AppTextStyles.bodySecondary.copyWith(
-                        fontSize: 14,
-                        height: 1.55,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceGrey,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.cardBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.info_outline_rounded,
-                            size: 18,
-                            color: AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                             child: Text(
-                              'Kustomisasi menu akan ditambahkan di tahap berikutnya. Saat ini kamu bisa langsung atur jumlah pesanan.',
-                              style: AppTextStyles.caption.copyWith(
-                                fontSize: 12,
+                              controller.item.description.trim().isNotEmpty
+                                  ? controller.item.description.trim()
+                                  : 'Expertly brewed dan dibuat fresh dengan rasa khas Nomad.',
+                              style: AppTextStyles.bodySecondary.copyWith(
+                                fontSize: 12.5,
                                 height: 1.45,
+                                color: const Color(0xFF8F8A84),
                               ),
+                            ),
+                          ),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Color(0xFFF0E9E2),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (controller.isDrink) ...[
+                                  const _SectionHeader(title: 'TEMPERATURE'),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _ChoiceCard(
+                                          label: 'Ice',
+                                          selected:
+                                              controller
+                                                  .drinkCustomization
+                                                  .temperature ==
+                                              'ice',
+                                          onTap: () =>
+                                              controller.setTemperature('ice'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _ChoiceCard(
+                                          label: 'Hot',
+                                          selected:
+                                              controller
+                                                  .drinkCustomization
+                                                  .temperature ==
+                                              'hot',
+                                          onTap: () =>
+                                              controller.setTemperature('hot'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 18),
+                                  if (controller
+                                          .drinkCustomization
+                                          .temperature ==
+                                      'ice') ...[
+                                    const _SectionHeader(title: 'ICE LEVEL'),
+                                    const SizedBox(height: 10),
+                                    Column(
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _ChoiceCard(
+                                                label: 'Less Ice',
+                                                selected:
+                                                    controller
+                                                        .drinkCustomization
+                                                        .iceLevel ==
+                                                    'less',
+                                                onTap: () => controller
+                                                    .setIceLevel('less'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: _ChoiceCard(
+                                                label: 'Normal Ice',
+                                                selected:
+                                                    controller
+                                                        .drinkCustomization
+                                                        .iceLevel ==
+                                                    'normal',
+                                                onTap: () => controller
+                                                    .setIceLevel('normal'),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _ChoiceCard(
+                                                label: 'More Ice',
+                                                selected:
+                                                    controller
+                                                        .drinkCustomization
+                                                        .iceLevel ==
+                                                    'more',
+                                                onTap: () => controller
+                                                    .setIceLevel('more'),
+                                              ),
+                                            ),
+                                            const Expanded(child: SizedBox()),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 18),
+                                  ],
+                                  const _SectionHeader(title: 'SUGAR LEVEL'),
+                                  const SizedBox(height: 10),
+                                  Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _ChoiceCard(
+                                              label: 'Normal Sugar',
+                                              selected:
+                                                  controller
+                                                      .drinkCustomization
+                                                      .sugarLevel ==
+                                                  'normal',
+                                              onTap: () => controller
+                                                  .setSugarLevel('normal'),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: _ChoiceCard(
+                                              label: 'Less Sugar',
+                                              selected:
+                                                  controller
+                                                      .drinkCustomization
+                                                      .sugarLevel ==
+                                                  'less',
+                                              onTap: () => controller
+                                                  .setSugarLevel('less'),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _ChoiceCard(
+                                              label: 'More Sugar',
+                                              selected:
+                                                  controller
+                                                      .drinkCustomization
+                                                      .sugarLevel ==
+                                                  'more',
+                                              onTap: () => controller
+                                                  .setSugarLevel('more'),
+                                            ),
+                                          ),
+                                          const Expanded(child: SizedBox()),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 18),
+                                ],
+                                if (controller.isFoodCustomizable) ...[
+                                  const _SectionHeader(title: 'LEVEL PEDAS'),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _ChoiceCard(
+                                          label: 'Tidak Pedas',
+                                          selected: !controller
+                                              .foodCustomization
+                                              .isSpicy,
+                                          onTap: () =>
+                                              controller.setSpicy(false),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _ChoiceCard(
+                                          label: 'Pedas',
+                                          selected: controller
+                                              .foodCustomization
+                                              .isSpicy,
+                                          onTap: () =>
+                                              controller.setSpicy(true),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 18),
+                                  const _SectionHeader(title: 'ADD-ON'),
+                                  const SizedBox(height: 10),
+                                  _AddOnCard(
+                                    label: 'Tambah Egg',
+                                    priceLabel:
+                                        '+ ${Formatters.currency(5000)}',
+                                    selected:
+                                        controller.foodCustomization.addEgg,
+                                    onTap: () => controller.setAddEgg(
+                                      !controller.foodCustomization.addEgg,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  top: BorderSide(color: AppColors.divider),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Obx(
-                    () => _QtyStepper(
-                      qty: controller.qty.value,
-                      onDecrease: controller.decrement,
-                      onIncrease: controller.increment,
-                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 54,
-                      child: Obx(
-                        () => ElevatedButton(
-                          onPressed: controller.addToCart,
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                ),
+                Container(
+                  color: const Color(0xFFF6F1EB),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
+                  child: Row(
+                    children: [
+                      _QtyStepper(
+                        qty: controller.qty,
+                        onDecrease: controller.decrement,
+                        onIncrease: controller.increment,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: controller.addToCart,
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'Tambah • ${Formatters.currency(controller.totalPrice)}',
-                              style: AppTextStyles.button.copyWith(fontSize: 15),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'TAMBAH • ${Formatters.currency(controller.totalPrice)}',
+                                style: AppTextStyles.button.copyWith(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
-class _MenuImage extends StatelessWidget {
+class _MenuImageSection extends StatelessWidget {
   final String imageUrl;
 
-  const _MenuImage({required this.imageUrl});
+  const _MenuImageSection({required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 230,
+      margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+      height: 220,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surfaceGrey,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.cardBorder),
+        color: const Color(0xFFF4F0EA),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFF0E9E2)),
       ),
       clipBehavior: Clip.antiAlias,
       child: _buildImage(),
@@ -206,12 +403,189 @@ class _MenuImage extends StatelessWidget {
 
   Widget _placeholder() {
     return Container(
-      color: AppColors.surfaceGrey,
+      color: const Color(0xFFF4F0EA),
       alignment: Alignment.center,
       child: const Icon(
         Icons.image_outlined,
         size: 42,
         color: AppColors.textHint,
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF6D6761),
+        letterSpacing: 0.7,
+      ),
+    );
+  }
+}
+
+class _ChoiceCard extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ChoiceCard({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = selected ? AppColors.primary : const Color(0xFFE7DED5);
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor, width: selected ? 1.4 : 1),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected
+                        ? AppColors.primary
+                        : const Color(0xFFD6CDC4),
+                    width: 1.6,
+                  ),
+                ),
+                child: selected
+                    ? Center(
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddOnCard extends StatelessWidget {
+  final String label;
+  final String priceLabel;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AddOnCard({
+    required this.label,
+    required this.priceLabel,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? AppColors.primary : const Color(0xFFE7DED5),
+              width: selected ? 1.4 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                priceLabel,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  fontSize: 12.5,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected
+                        ? AppColors.primary
+                        : const Color(0xFFD6CDC4),
+                    width: 1.6,
+                  ),
+                ),
+                child: selected
+                    ? Center(
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -234,30 +608,27 @@ class _QtyStepper extends StatelessWidget {
       height: 54,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: AppColors.surfaceGrey,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
+        border: Border.all(color: const Color(0xFFE7DED5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StepperButton(
-            icon: Icons.remove_rounded,
-            onTap: onDecrease,
-          ),
+          _StepperButton(icon: Icons.remove_rounded, onTap: onDecrease),
           SizedBox(
-            width: 40,
+            width: 34,
             child: Center(
               child: Text(
                 '$qty',
-                style: AppTextStyles.heading3.copyWith(fontSize: 16),
+                style: AppTextStyles.heading3.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
-          _StepperButton(
-            icon: Icons.add_rounded,
-            onTap: onIncrease,
-          ),
+          _StepperButton(icon: Icons.add_rounded, onTap: onIncrease),
         ],
       ),
     );
@@ -268,27 +639,20 @@ class _StepperButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _StepperButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _StepperButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: const Color(0xFFF7F2EC),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(
-            icon,
-            size: 18,
-            color: AppColors.textPrimary,
-          ),
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 18, color: AppColors.textPrimary),
         ),
       ),
     );

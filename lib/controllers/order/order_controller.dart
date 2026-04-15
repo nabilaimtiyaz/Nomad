@@ -7,8 +7,10 @@ import '../../core/routes/app_routes.dart';
 import '../../data/datasources/order_remote.dart';
 import '../../data/models/menu_item_model.dart';
 import '../../data/models/order_model.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/order_repository.dart';
 import '../cart/cart_controller.dart';
+import '../voucher/voucher_controller.dart';
 
 class OrderController extends GetxController {
   final cart = Get.find<CartController>();
@@ -26,6 +28,36 @@ class OrderController extends GetxController {
   String paymentMethod = 'NomadPay';
 
   RealtimeChannel? _channel;
+
+  VoucherController get voucherController {
+    if (Get.isRegistered<VoucherController>()) {
+      return Get.find<VoucherController>();
+    }
+    return Get.put(VoucherController());
+  }
+
+  int get subtotalPreview => cart.subtotal;
+
+  int get voucherDiscountPreview {
+    return voucherController.discountAmount.value.clamp(0, subtotalPreview);
+  }
+
+  int get pointsToUse => appState.checkoutPointsToUse;
+
+  int get maxPointsUsable {
+    if (!appState.isLoggedIn) return 0;
+    return appState.user.loyaltyPoints.clamp(0, subtotalPreview);
+  }
+
+  int get grandTotalPreview {
+    final afterVoucher =
+        (subtotalPreview - voucherDiscountPreview).clamp(0, 1 << 31);
+    final afterPoints = (afterVoucher - pointsToUse).clamp(0, 1 << 31);
+    return afterPoints;
+  }
+
+  String? get appliedVoucherCode =>
+      voucherController.appliedVoucher.value?.code;
 
   @override
   void onReady() {
@@ -48,7 +80,8 @@ class OrderController extends GetxController {
 
       final result = await orderRepo.getOrders(userId);
       orders = result;
-      update();
+    } catch (e) {
+      Get.log('fetchOrders error: $e');
     } finally {
       isLoading = false;
       update();
@@ -65,6 +98,8 @@ class OrderController extends GetxController {
     currentOrder = null;
     orderType = 'takeaway';
     paymentMethod = 'NomadPay';
+    voucherController.clearAppliedVoucher();
+    appState.clearCheckoutPoints();
     update();
 
     Get.toNamed(AppRoutes.orderStatus);
@@ -87,6 +122,37 @@ class OrderController extends GetxController {
 
   void setPaymentMethod(String value) {
     paymentMethod = value;
+    update();
+  }
+
+  void applyPoints(int points) {
+    if (!appState.isLoggedIn) {
+      Get.snackbar('Login diperlukan', 'Kamu harus login dulu.');
+      return;
+    }
+
+    if (voucherController.appliedVoucher.value != null) {
+      Get.snackbar(
+        'Tidak bisa dipakai',
+        'Poin dan voucher tidak bisa digunakan bersamaan.',
+      );
+      return;
+    }
+
+    appState.setCheckoutPointsToUse(points.clamp(0, maxPointsUsable));
+    update();
+  }
+
+  void applyMaxPoints() {
+    applyPoints(maxPointsUsable);
+  }
+
+  void clearPoints() {
+    appState.clearCheckoutPoints();
+    update();
+  }
+
+  void refreshCheckout() {
     update();
   }
 
@@ -139,28 +205,29 @@ class OrderController extends GetxController {
     }
   }
 
-  Future<void> confirmOrder() async {
+  Future<dynamic> confirmOrder() async {
+    if (isLoading) {
+      return 'Sedang memproses order...';
+    }
+
     if (cart.isEmpty) {
-      Get.snackbar('Keranjang kosong', 'Tambahkan menu terlebih dahulu.');
-      return;
+      return 'Keranjang masih kosong.';
     }
 
     if (!appState.isLoggedIn) {
-      Get.snackbar('Belum login', 'Silakan login terlebih dahulu.');
-      return;
+      return 'Kamu harus login dulu.';
     }
 
     if (appState.user.id.isEmpty) {
-      Get.snackbar(
-        'User tidak valid',
-        'ID user pada tabel users tidak ditemukan.',
-      );
-      return;
+      return 'Data user belum valid.';
     }
 
     if (appState.selectedBranch == null) {
-      Get.snackbar('Cabang belum dipilih', 'Pilih cabang terlebih dahulu.');
-      return;
+      return 'Cabang belum dipilih.';
+    }
+
+    if (pointsToUse > 0 && appliedVoucherCode != null) {
+      return 'Poin dan voucher tidak bisa digunakan bersamaan.';
     }
 
     try {
@@ -169,7 +236,18 @@ class OrderController extends GetxController {
 
       final queue = await orderRepo.generateQueueNumber();
       final branch = appState.selectedBranch!;
-      final subtotal = cart.subtotal;
+      final subtotal = subtotalPreview;
+      final discountAmount = voucherDiscountPreview;
+      final grandTotal = grandTotalPreview;
+
+      final isUsingVoucher =
+          appliedVoucherCode != null && appliedVoucherCode!.trim().isNotEmpty;
+      final isUsingPoints = pointsToUse > 0;
+
+      final earnedPoints =
+          (!isUsingVoucher && !isUsingPoints)
+              ? appState.calculateEarnedPoints(subtotal)
+              : 0;
 
       final order = OrderModel(
         id: '',
@@ -182,39 +260,113 @@ class OrderController extends GetxController {
         status: OrderStatus.pending,
         createdAt: DateTime.now(),
         subtotal: subtotal,
-        discountAmount: 0,
+        discountAmount: discountAmount,
         serviceFee: 0,
-        grandTotal: subtotal,
-        pointsEarned: appState.calculateEarnedPoints(subtotal),
-        pointsUsed: 0,
-        voucherCode: null,
+        grandTotal: grandTotal,
+        pointsEarned: earnedPoints,
+        pointsUsed: pointsToUse,
+        voucherCode: appliedVoucherCode,
         orderType: orderType,
         notes: null,
       );
 
       final saved = await orderRepo.createOrder(order);
 
+      await _updateUserPoints(
+        earned: order.pointsEarned,
+        used: order.pointsUsed,
+      );
+
       currentOrder = saved;
       isCheckoutMode = false;
+
+      if (appliedVoucherCode != null && appliedVoucherCode!.trim().isNotEmpty) {
+        appState.markVoucherUsed(appliedVoucherCode!);
+      }
 
       listenOrder(saved.id);
 
       cart.clearCart();
+      voucherController.clearAppliedVoucher();
+      appState.clearCheckoutPoints();
+
       await fetchOrders();
       update();
+
+      return saved;
     } on PostgrestException catch (e) {
-      Get.snackbar('Gagal checkout', e.message);
+      Get.log('confirmOrder PostgrestException: ${e.message}');
+      return _mapCheckoutDbError(e);
     } catch (e) {
-      Get.snackbar('Gagal checkout', e.toString());
+      Get.log('confirmOrder unknown error: $e');
+      return 'Checkout gagal. Coba lagi.';
     } finally {
       isLoading = false;
       update();
     }
   }
 
+  Future<void> _updateUserPoints({
+    required int earned,
+    required int used,
+  }) async {
+    try {
+      if (!appState.isLoggedIn) return;
+      if (appState.user.id.isEmpty) return;
+
+      final userId = appState.user.id;
+
+      final current = await client
+          .from('users')
+          .select('loyalty_points, total_earned_points')
+          .eq('id', userId)
+          .single();
+
+      final currentPoints = (current['loyalty_points'] ?? 0) as int;
+      final currentTotal = (current['total_earned_points'] ?? 0) as int;
+
+      final newPoints = (currentPoints - used + earned).clamp(0, 1 << 31);
+      final newTotal = currentTotal + earned;
+      final newTier = UserModel.getTier(newTotal);
+
+      await client
+          .from('users')
+          .update({
+            'loyalty_points': newPoints,
+            'total_earned_points': newTotal,
+            'membership_tier': newTier,
+          })
+          .eq('id', userId);
+
+      appState.setAuthenticatedUser(
+        appState.user.copyWith(
+          loyaltyPoints: newPoints,
+          totalEarnedPoints: newTotal,
+          membershipTier: newTier,
+        ),
+      );
+    } catch (e) {
+      Get.log('updateUserPoints error: $e');
+    }
+  }
+
+  String _mapCheckoutDbError(PostgrestException e) {
+    if (e.code == '42501') {
+      return 'Akses database ditolak. Cek policy RLS Supabase.';
+    }
+
+    if (e.code == '42703') {
+      return 'Kolom database untuk order belum sesuai.';
+    }
+
+    return 'Gagal menyimpan order ke database.';
+  }
+
   void goHome() {
     _channel?.unsubscribe();
     isCheckoutMode = false;
+    voucherController.clearAppliedVoucher();
+    appState.clearCheckoutPoints();
     update();
     Get.offAllNamed(AppRoutes.home);
   }

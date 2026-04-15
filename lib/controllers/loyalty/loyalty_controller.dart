@@ -1,53 +1,50 @@
 import 'package:get/get.dart';
+
 import '../../core/app_state.dart';
 import '../../data/models/user_model.dart';
 
 class LoyaltyController extends GetxController {
-  final AppStateController _appState = Get.find<AppStateController>();
+  final AppStateController appState = Get.find<AppStateController>();
 
-  static const tiers = [
-    ('silver',   'Silver',   500,  '★', '1.2× Point Multiplier\nBirthday Reward',                         false),
-    ('gold',     'Gold',     2000, '◆', '1.5× Point Multiplier\nPriority Reservations\nFree Monthly Drink', true),
-    ('platinum', 'Platinum', 5000, '✦', '2× Point Multiplier\nConcierge Service\nExclusive Event Access',   false),
-  ];
+  UserModel get user => appState.user;
 
-  static const redeems = [
-    ('Artisan Coffee',  'Any handcrafted beverage, any size.',   500,  'coffee'),
-    ('Signature Beans', 'Choice of single origin or house blend.', 2000, 'grain'),
-    ('Morning Pastry',  'Freshly baked in-house daily.',          350,  'pastry'),
-    ('Nomad Vessel',    'Limited edition ceramic tumbler.',        4500, 'cup'),
-  ];
+  int get points => user.loyaltyPoints;
+  int get totalEarned => user.totalEarnedPoints;
+  String get tier => user.membershipTier;
 
-  UserModel get user => _appState.user;
-  int get points     => _appState.user.loyaltyPoints;
-  String get tier    => _appState.user.membershipTier;
-
-  bool canRedeem(int ptsNeeded) => points >= ptsNeeded;
-
-  void redeem(String rewardName, int ptsNeeded) {
-    final success = _appState.redeemPoints(ptsNeeded);
-    if (success) {
-      Get.snackbar('Berhasil!',
-        '$ptsNeeded poin ditukar untuk $rewardName',
-        snackPosition: SnackPosition.BOTTOM);
-    } else {
-      Get.snackbar('Gagal', 'Saldo poin tidak cukup',
-        snackPosition: SnackPosition.BOTTOM);
+  double get multiplier {
+    switch (tier) {
+      case 'platinum':
+        return 2.0;
+      case 'gold':
+        return 1.5;
+      default:
+        return 1.0;
     }
   }
 
-  void showConfirmRedeem(String rewardName, int ptsNeeded) {
-    Get.defaultDialog(
-      title: 'Konfirmasi Redeem',
-      middleText:
-          'Tukar $ptsNeeded poin untuk "$rewardName"?\n\n'
-          'Saldo setelah: ${points - ptsNeeded} poin',
-      textConfirm: 'Tukar',
-      textCancel:  'Batal',
-      onConfirm: () {
-        Get.back();
-        redeem(rewardName, ptsNeeded);
-      },
-    );
+  int get nextTierThreshold {
+    switch (tier) {
+      case 'silver':
+        return 1000;
+      case 'gold':
+        return 3000;
+      default:
+        return totalEarned;
+    }
+  }
+
+  double get progress {
+    final target = nextTierThreshold;
+    if (target == 0) return 1.0;
+
+    return (totalEarned / target).clamp(0.0, 1.0);
+  }
+
+  String get tierLabel => UserModel.getTierLabel(tier);
+  String get tierIcon => UserModel.getTierIcon(tier);
+
+  String get benefitText {
+    return '${multiplier}x poin setiap pembelian';
   }
 }

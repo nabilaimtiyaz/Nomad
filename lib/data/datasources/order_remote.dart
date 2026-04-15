@@ -1,8 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/services/supabase_service.dart';
-import '../models/order_model.dart';
 import '../models/menu_item_model.dart';
+import '../models/order_model.dart';
 
 class OrderRemote {
   final SupabaseClient client = SupabaseService.client;
@@ -27,6 +27,7 @@ class OrderRemote {
           'grand_total': order.grandTotal,
           'points_earned': order.pointsEarned,
           'points_used': order.pointsUsed,
+          'voucher_code': order.voucherCode,
           'order_type': order.orderType,
           'notes': order.notes,
           'created_at': DateTime.now().toIso8601String(),
@@ -42,7 +43,7 @@ class OrderRemote {
         'menu_item_id': item.menuItem.id,
         'quantity': item.qty,
         'notes': item.notes,
-        'price': item.menuItem.price,
+        'price': item.unitPrice,
       });
     }
 
@@ -57,7 +58,10 @@ class OrderRemote {
           branches (name),
           order_items (
             *,
-            menu_items (*)
+            menu_items (
+              *,
+              categories (name)
+            )
           )
         ''')
         .eq('user_id', userId)
@@ -67,7 +71,8 @@ class OrderRemote {
       final itemsRaw = e['order_items'] as List? ?? [];
 
       final items = itemsRaw.map((item) {
-        final menu = item['menu_items'];
+        final menu = item['menu_items'] as Map<String, dynamic>;
+        final category = menu['categories'];
 
         final menuItem = MenuItem(
           id: menu['id'].toString(),
@@ -79,13 +84,19 @@ class OrderRemote {
           imageUrl: menu['image_url'] ?? '',
           isAvailable: menu['is_available'] ?? true,
           orderCount: _toInt(menu['order_count']),
+          categoryName: category is Map ? (category['name'] ?? '') : '',
         );
 
+        final notes = (item['notes'] ?? '').toString();
+        final unitPrice = _toInt(item['price']);
+
         return CartItem(
-          entryId: CartItem.entryKey(menuItem.id, item['notes'] ?? ''),
+          entryId: CartItem.entryKey(menuItem.id, 'history', notes: notes),
           menuItem: menuItem,
           qty: _toInt(item['quantity']),
-          notes: item['notes'] ?? '',
+          notes: notes,
+          unitPrice: unitPrice,
+          customizationKey: 'history',
         );
       }).toList();
 
@@ -105,6 +116,7 @@ class OrderRemote {
         grandTotal: _toInt(e['grand_total']),
         pointsEarned: _toInt(e['points_earned']),
         pointsUsed: _toInt(e['points_used']),
+        voucherCode: e['voucher_code']?.toString(),
         orderType: e['order_type'] ?? 'dine_in',
         notes: e['notes'],
       );

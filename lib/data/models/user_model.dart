@@ -42,30 +42,34 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
-    final totalEarnedPoints = (map['total_earned_points'] ??
-            map['totalEarnedPoints'] ??
-            map['total_points'] ??
-            0) as int;
+    final totalEarnedPoints = _toInt(
+      map['total_earned_points'] ??
+          map['totalEarnedPoints'] ??
+          map['total_points'] ??
+          0,
+    );
 
-    final loyaltyPoints =
-        (map['loyalty_points'] ?? map['loyaltyPoints'] ?? 0) as int;
+    final loyaltyPoints = _toInt(
+      map['loyalty_points'] ?? map['loyaltyPoints'] ?? 0,
+    );
 
-    final tier = (map['membership_tier'] ?? map['membershipTier']) as String?;
+    final rawTier = (map['membership_tier'] ?? map['membershipTier'])
+        ?.toString()
+        .trim()
+        .toLowerCase();
 
     return UserModel(
-      /// PENTING:
-      /// id = primary key row di tabel users
       id: (map['id'] ?? '').toString(),
-
-      /// authId = id user dari Supabase Auth
       authId: (map['auth_id'] ?? '').toString(),
-
       name: (map['name'] ?? '').toString(),
       email: (map['email'] ?? '').toString(),
       phone: (map['phone'] ?? '').toString(),
       loyaltyPoints: loyaltyPoints,
       totalEarnedPoints: totalEarnedPoints,
-      membershipTier: tier ?? getTier(totalEarnedPoints),
+      membershipTier: _normalizeTier(
+        rawTier,
+        fallbackTotalEarned: totalEarnedPoints,
+      ),
     );
   }
 
@@ -82,11 +86,32 @@ class UserModel {
     };
   }
 
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    return int.tryParse(value?.toString() ?? '0') ?? 0;
+  }
+
+  static String _normalizeTier(
+    String? tier, {
+    required int fallbackTotalEarned,
+  }) {
+    switch (tier) {
+      case 'silver':
+      case 'gold':
+      case 'platinum':
+        return tier!;
+      case 'bronze':
+        return 'silver';
+      default:
+        return getTier(fallbackTotalEarned);
+    }
+  }
+
   static String getTier(int totalEarned) {
     if (totalEarned >= 5000) return 'platinum';
-    if (totalEarned >= 2000) return 'gold';
-    if (totalEarned >= 500) return 'silver';
-    return 'bronze';
+    if (totalEarned >= 2500) return 'gold';
+    return 'silver';
   }
 
   static String getTierLabel(String tier) {
@@ -95,10 +120,8 @@ class UserModel {
         return 'Platinum';
       case 'gold':
         return 'Gold';
-      case 'silver':
-        return 'Silver';
       default:
-        return 'Bronze';
+        return 'Silver';
     }
   }
 
@@ -108,10 +131,8 @@ class UserModel {
         return '💎';
       case 'gold':
         return '🥇';
-      case 'silver':
-        return '🥈';
       default:
-        return '🥉';
+        return '🥈';
     }
   }
 }

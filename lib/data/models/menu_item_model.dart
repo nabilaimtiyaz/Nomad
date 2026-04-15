@@ -1,20 +1,19 @@
 class Category {
   final String id;
   final String name;
-  final String? icon; // PERBAIKAN: Menambahkan properti icon (nullable)
+  final String icon;
 
   const Category({
     required this.id,
     required this.name,
-    this.icon, // PERBAIKAN: Ditambahkan ke constructor
+    required this.icon,
   });
 
   factory Category.fromMap(Map<String, dynamic> map) {
     return Category(
       id: (map['id'] ?? '').toString(),
       name: (map['name'] ?? '').toString(),
-      icon: map['icon']
-          ?.toString(), // PERBAIKAN: Membaca kolom icon dari database
+      icon: (map['icon'] ?? '').toString(),
     );
   }
 }
@@ -29,7 +28,7 @@ class MenuItem {
   final String imageUrl;
   final bool isAvailable;
   final int orderCount;
-  final bool isDrink;
+  final String categoryName;
 
   const MenuItem({
     required this.id,
@@ -41,14 +40,10 @@ class MenuItem {
     required this.imageUrl,
     required this.isAvailable,
     required this.orderCount,
-    this.isDrink = false,
+    this.categoryName = '',
   });
 
   factory MenuItem.fromMap(Map<String, dynamic> map) {
-    final categoryName = (map['category_name'] ?? map['category'] ?? '')
-        .toString()
-        .toLowerCase();
-
     return MenuItem(
       id: (map['id'] ?? '').toString(),
       branchId: (map['branch_id'] ?? '').toString(),
@@ -57,29 +52,106 @@ class MenuItem {
       description: (map['description'] ?? '').toString(),
       price: _toInt(map['price']),
       imageUrl: (map['image_url'] ?? '').toString(),
-      isAvailable: map['is_available'] == null
-          ? true
-          : map['is_available'] as bool,
+      isAvailable: map['is_available'] ?? true,
       orderCount: _toInt(map['order_count']),
-      isDrink: map['is_drink'] is bool
-          ? map['is_drink'] as bool
-          : _isDrinkFromCategory(categoryName),
+      categoryName: (map['category_name'] ?? '').toString(),
     );
   }
+
+  MenuItem copyWith({
+    String? id,
+    String? branchId,
+    String? categoryId,
+    String? name,
+    String? description,
+    int? price,
+    String? imageUrl,
+    bool? isAvailable,
+    int? orderCount,
+    String? categoryName,
+  }) {
+    return MenuItem(
+      id: id ?? this.id,
+      branchId: branchId ?? this.branchId,
+      categoryId: categoryId ?? this.categoryId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isAvailable: isAvailable ?? this.isAvailable,
+      orderCount: orderCount ?? this.orderCount,
+      categoryName: categoryName ?? this.categoryName,
+    );
+  }
+
+  bool get isDrink => categoryName.trim().toLowerCase() == 'drink';
+  bool get isFood => categoryName.trim().toLowerCase() == 'food';
+  bool get isSnack => categoryName.trim().toLowerCase() == 'snack';
+  bool get isDessert => categoryName.trim().toLowerCase() == 'dessert';
 
   static int _toInt(dynamic value) {
     if (value is int) return value;
     if (value is double) return value.toInt();
     return int.tryParse(value?.toString() ?? '0') ?? 0;
   }
+}
 
-  static bool _isDrinkFromCategory(String categoryName) {
-    return categoryName.contains('coffee') ||
-        categoryName.contains('kopi') ||
-        categoryName.contains('tea') ||
-        categoryName.contains('teh') ||
-        categoryName.contains('drink') ||
-        categoryName.contains('minuman');
+class DrinkCustomization {
+  final String temperature; // ice | hot
+  final String? iceLevel; // less | normal | more
+  final String sugarLevel; // less | normal | more
+
+  const DrinkCustomization({
+    required this.temperature,
+    required this.iceLevel,
+    required this.sugarLevel,
+  });
+
+  factory DrinkCustomization.defaults() {
+    return const DrinkCustomization(
+      temperature: 'ice',
+      iceLevel: 'normal',
+      sugarLevel: 'normal',
+    );
+  }
+
+  DrinkCustomization copyWith({
+    String? temperature,
+    String? iceLevel,
+    String? sugarLevel,
+  }) {
+    return DrinkCustomization(
+      temperature: temperature ?? this.temperature,
+      iceLevel: iceLevel,
+      sugarLevel: sugarLevel ?? this.sugarLevel,
+    );
+  }
+}
+
+class FoodCustomization {
+  final bool isSpicy;
+  final bool addEgg;
+
+  const FoodCustomization({
+    required this.isSpicy,
+    required this.addEgg,
+  });
+
+  factory FoodCustomization.defaults() {
+    return const FoodCustomization(
+      isSpicy: false,
+      addEgg: false,
+    );
+  }
+
+  FoodCustomization copyWith({
+    bool? isSpicy,
+    bool? addEgg,
+  }) {
+    return FoodCustomization(
+      isSpicy: isSpicy ?? this.isSpicy,
+      addEgg: addEgg ?? this.addEgg,
+    );
   }
 }
 
@@ -88,88 +160,43 @@ class CartItem {
   final MenuItem menuItem;
   final int qty;
   final String notes;
+  final int unitPrice;
+  final String customizationKey;
 
   const CartItem({
     required this.entryId,
     required this.menuItem,
     required this.qty,
     required this.notes,
+    required this.unitPrice,
+    required this.customizationKey,
   });
 
-  factory CartItem.detailed(MenuItem menuItem, int qty, String notes) {
-    return CartItem(
-      entryId: entryKey(menuItem.id, notes),
-      menuItem: menuItem,
-      qty: qty,
-      notes: notes,
-    );
-  }
-
-  int get subtotal => menuItem.price * qty;
+  int get subtotal => unitPrice * qty;
 
   CartItem copyWith({
     String? entryId,
     MenuItem? menuItem,
     int? qty,
     String? notes,
+    int? unitPrice,
+    String? customizationKey,
   }) {
     return CartItem(
       entryId: entryId ?? this.entryId,
       menuItem: menuItem ?? this.menuItem,
       qty: qty ?? this.qty,
       notes: notes ?? this.notes,
+      unitPrice: unitPrice ?? this.unitPrice,
+      customizationKey: customizationKey ?? this.customizationKey,
     );
   }
 
-  static String entryKey(String menuId, String notes) {
-    final normalizedNotes = notes.trim().toLowerCase();
-    return '$menuId|$normalizedNotes';
-  }
-}
-
-class DrinkCustomization {
-  final String temperature;
-  final String size;
-  final String sugar;
-  final String ice;
-
-  const DrinkCustomization({
-    this.temperature = 'Ice',
-    this.size = 'Regular',
-    this.sugar = 'Normal',
-    this.ice = 'Normal Ice',
-  });
-
-  DrinkCustomization copyWith({
-    String? temperature,
-    String? size,
-    String? sugar,
-    String? ice,
+  static String entryKey(
+    String menuId,
+    String customizationKey, {
+    String notes = '',
   }) {
-    return DrinkCustomization(
-      temperature: temperature ?? this.temperature,
-      size: size ?? this.size,
-      sugar: sugar ?? this.sugar,
-      ice: ice ?? this.ice,
-    );
-  }
-
-  int get extraPrice {
-    switch (size.toLowerCase()) {
-      case 'large':
-        return 6000;
-      case 'medium':
-        return 3000;
-      default:
-        return 0;
-    }
-  }
-
-  String toSummary() {
-    final parts = <String>[temperature, size, sugar];
-    if (temperature.toLowerCase() == 'ice' && ice.trim().isNotEmpty) {
-      parts.add(ice);
-    }
-    return parts.join(', ');
+    return '$menuId|$customizationKey|${notes.trim().toLowerCase()}';
   }
 }

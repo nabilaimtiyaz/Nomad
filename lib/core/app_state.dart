@@ -15,6 +15,10 @@ class AppStateController extends GetxController {
 
   Branch? _selectedBranch;
   Branch? get selectedBranch => _selectedBranch;
+  String? get selectedBranchId => _selectedBranch?.id;
+
+  int _checkoutPointsToUse = 0;
+  int get checkoutPointsToUse => _checkoutPointsToUse;
 
   CartController get _cartController => Get.find<CartController>();
 
@@ -37,6 +41,7 @@ class AppStateController extends GetxController {
     _isLoggedIn = false;
     _user = null;
     _selectedBranch = null;
+    _checkoutPointsToUse = 0;
     _orders.clear();
     _voucherUsageByCode.clear();
 
@@ -100,17 +105,12 @@ class AppStateController extends GetxController {
   void addOrder(OrderModel order) {
     _orders.insert(0, order);
 
-    _earnPoints(order.pointsEarned);
-
-    if (order.pointsUsed > 0) {
-      _deductPoints(order.pointsUsed);
-    }
-
     if (order.voucherCode != null && order.voucherCode!.trim().isNotEmpty) {
       markVoucherUsed(order.voucherCode!);
     }
 
     _cartController.clearCart();
+    _checkoutPointsToUse = 0;
     update();
   }
 
@@ -133,6 +133,20 @@ class AppStateController extends GetxController {
   void markVoucherUsed(String code) {
     final key = code.trim().toUpperCase();
     _voucherUsageByCode[key] = (_voucherUsageByCode[key] ?? 0) + 1;
+    update();
+  }
+
+  void setCheckoutPointsToUse(int points) {
+    if (_user == null) {
+      _checkoutPointsToUse = 0;
+    } else {
+      _checkoutPointsToUse = points.clamp(0, _user!.loyaltyPoints);
+    }
+    update();
+  }
+
+  void clearCheckoutPoints() {
+    _checkoutPointsToUse = 0;
     update();
   }
 
@@ -170,17 +184,18 @@ class AppStateController extends GetxController {
 
     switch (_user!.membershipTier) {
       case 'platinum':
-        return 2.0;
+        return 3.0;
       case 'gold':
-        return 1.5;
+        return 2.0;
       case 'silver':
-        return 1.2;
+        return 1.0;
       default:
         return 1.0;
     }
   }
 
-  int calculateEarnedPoints(int grandTotal) {
-    return ((grandTotal / 1000) * pointMultiplier).floor();
+  int calculateEarnedPoints(int subtotal) {
+    if (subtotal <= 0) return 0;
+    return ((subtotal / 1000) * pointMultiplier).floor();
   }
 }

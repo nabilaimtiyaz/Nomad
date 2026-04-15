@@ -2,26 +2,21 @@ import 'package:get/get.dart';
 
 import '../../controllers/auth/login_controller.dart';
 import '../../controllers/auth/register_controller.dart';
-import '../../controllers/cart/cart_controller.dart';
-import '../../controllers/home/home_controller.dart';
-import '../../controllers/home/main_controller.dart';
 import '../../controllers/loyalty/loyalty_controller.dart';
-import '../../controllers/menu/menu_controller.dart';
-import '../../controllers/order/order_controller.dart';
 import '../../controllers/profile/profile_controller.dart';
 import '../../controllers/splash/splash_controller.dart';
 import '../../controllers/voucher/voucher_controller.dart';
 
-import '../../presentation/screens/splash_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart';
-import '../../presentation/screens/home/main_screen.dart';
 import '../../presentation/screens/cart/cart_screen.dart';
+import '../../presentation/screens/home/main_screen.dart';
+import '../../presentation/screens/loyalty/loyalty_screen.dart';
+import '../../presentation/screens/order/order_history_screen.dart';
 import '../../presentation/screens/order/order_status_screen.dart';
 import '../../presentation/screens/profile/edit_profile_screen.dart';
-import '../../presentation/screens/loyalty/loyalty_screen.dart';
+import '../../presentation/screens/splash_screen.dart';
 import '../../presentation/screens/voucher/voucher_screen.dart';
-import '../../presentation/screens/order/order_history_screen.dart';
 
 import 'app_routes.dart';
 
@@ -54,62 +49,9 @@ class AppPages {
         }
       }),
     ),
-    GetPage(
-      name: AppRoutes.home,
-      page: () => const MainScreen(),
-      bindings: [
-        BindingsBuilder(() {
-          if (!Get.isRegistered<MainController>()) {
-            Get.put(MainController());
-          }
-        }),
-        BindingsBuilder(() {
-          if (!Get.isRegistered<HomeController>()) {
-            Get.put(HomeController());
-          }
-        }),
-        BindingsBuilder(() {
-          if (!Get.isRegistered<MenuController>()) {
-            Get.put(MenuController());
-          }
-        }),
-        BindingsBuilder(() {
-          if (!Get.isRegistered<CartController>()) {
-            Get.put(CartController());
-          }
-        }),
-        BindingsBuilder(() {
-          if (!Get.isRegistered<OrderController>()) {
-            Get.put(OrderController());
-          }
-        }),
-      ],
-    ),
-    GetPage(
-      name: AppRoutes.cart,
-      page: () => const CartScreen(),
-      bindings: [
-        BindingsBuilder(() {
-          if (!Get.isRegistered<CartController>()) {
-            Get.put(CartController());
-          }
-        }),
-        BindingsBuilder(() {
-          if (!Get.isRegistered<OrderController>()) {
-            Get.put(OrderController());
-          }
-        }),
-      ],
-    ),
-    GetPage(
-      name: AppRoutes.orderStatus,
-      page: () => const OrderStatusScreen(),
-      binding: BindingsBuilder(() {
-        if (!Get.isRegistered<OrderController>()) {
-          Get.put(OrderController());
-        }
-      }),
-    ),
+    GetPage(name: AppRoutes.home, page: () => const MainScreen()),
+    GetPage(name: AppRoutes.cart, page: () => const CartScreen()),
+    GetPage(name: AppRoutes.orderStatus, page: () => const OrderStatusScreen()),
     GetPage(
       name: AppRoutes.editProfile,
       page: () => const EditProfileScreen(),
@@ -140,12 +82,6 @@ class AppPages {
     GetPage(
       name: AppRoutes.orderHistory,
       page: () => const OrderHistoryScreen(),
-      binding: BindingsBuilder(() {
-        if (!Get.isRegistered<OrderController>()) {
-          Get.put(OrderController());
-        }
-      }),
     ),
-
   ];
 }

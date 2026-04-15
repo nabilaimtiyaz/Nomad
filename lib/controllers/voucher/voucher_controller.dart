@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_state.dart';
 import '../../data/datasources/voucher_remote.dart';
@@ -10,8 +11,7 @@ class VoucherController extends GetxController {
   final AppStateController _appState = Get.find<AppStateController>();
   final CartController _cart = Get.find<CartController>();
 
-  final VoucherRepository _repository =
-      VoucherRepository(VoucherRemote());
+  final VoucherRepository _repository = VoucherRepository(VoucherRemote());
 
   final vouchers = <VoucherModel>[].obs;
   final isLoading = false.obs;
@@ -25,65 +25,80 @@ class VoucherController extends GetxController {
     loadVouchers();
   }
 
-  /// ======================
-  /// LOAD VOUCHERS FROM DB
-  /// ======================
   Future<void> loadVouchers() async {
-    isLoading.value = true;
-
-    final rawList = await _repository.fetchAllVouchers();
-
-    vouchers.value = rawList;
-
-    isLoading.value = false;
+    try {
+      isLoading.value = true;
+      final rawList = await _repository.fetchAllVouchers();
+      vouchers.value = rawList;
+    } catch (e) {
+      Get.log('loadVouchers error: $e');
+      vouchers.clear();
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  /// ======================
-  /// APPLY VOUCHER
-  /// ======================
-  Future<void> applyVoucher(String code) async {
-    final data = await _repository.validateVoucher(code);
+  Future<String?> applyVoucher(String code) async {
+    final normalized = code.trim().toUpperCase();
 
-    if (data == null) {
-      Get.snackbar("Error", "Voucher tidak ditemukan");
-      return;
+    if (normalized.isEmpty) {
+      return 'Kode voucher tidak boleh kosong';
     }
 
-    final voucher = VoucherModel.fromMap(data);
+    try {
+      final data = await _repository.validateVoucher(normalized);
 
-    final error = voucher.validate(
-      _cart.subtotal,
-      _appState.getUserVoucherUsageCount(voucher.code),
-    );
+      if (data == null) {
+        return 'Voucher tidak ditemukan';
+      }
 
-    if (error != null) {
-      Get.snackbar("Error", error);
-      return;
+      final voucher = VoucherModel.fromMap(data);
+
+      final error = voucher.validate(
+        _cart.subtotal,
+        _appState.getUserVoucherUsageCount(voucher.code),
+      );
+
+      if (error != null) {
+        return error;
+      }
+
+      final discount = voucher.calculateDiscount(_cart.subtotal);
+
+      appliedVoucher.value = voucher;
+      discountAmount.value = discount;
+
+      return null;
+    } on PostgrestException catch (e) {
+      Get.log('applyVoucher PostgrestException: ${e.message}');
+      return _mapVoucherDbError(e);
+    } catch (e) {
+      Get.log('applyVoucher unknown error: $e');
+      return 'Gagal memproses voucher. Coba lagi.';
     }
-
-    final discount = voucher.calculateDiscount(_cart.subtotal);
-
-    appliedVoucher.value = voucher;
-    discountAmount.value = discount;
   }
 
-  /// ======================
-  /// FILTER ACTIVE
-  /// ======================
+  void clearAppliedVoucher() {
+    appliedVoucher.value = null;
+    discountAmount.value = 0;
+  }
+
   List<VoucherModel> get activeVouchers =>
       vouchers.where((v) => v.isValid).toList();
 
-  /// ======================
-  /// FILTER EXPIRED
-  /// ======================
   List<VoucherModel> get expiredVouchers =>
       vouchers.where((v) => !v.isValid).toList();
 
-  /// ======================
-  /// CEK USER SUDAH PAKAI
-  /// ======================
   bool isUsedByCurrentUser(VoucherModel voucher) {
     return _appState.getUserVoucherUsageCount(voucher.code) >=
         voucher.usagePerUser;
+  }
+
+  String _mapVoucherDbError(PostgrestException e) {
+    if (e.code == '42703') {
+      return 'Konfigurasi tabel voucher di database belum sesuai.';
+    }
+
+    return 'Gagal mengambil data voucher dari database.';
   }
 }

@@ -126,9 +126,7 @@ class _Header extends StatelessWidget {
           clipper: HeaderClipper(),
           child: Container(
             height: 200,
-            decoration: const BoxDecoration(
-              gradient: AppColors.gradientHeader,
-            ),
+            decoration: const BoxDecoration(gradient: AppColors.gradientHeader),
           ),
         ),
         SafeArea(
@@ -327,15 +325,12 @@ class _MenuItemCard extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => MenuDetailSheet(
-        controller: MenuDetailController(
-          item: item,
-          initialQty: 1,
-        ),
+        controller: MenuDetailController(item: item, initialQty: 1),
       ),
     );
   }
 
-  void _quickAdd() {
+  void _quickAdd(BuildContext context) {
     if (!item.isAvailable) return;
     cart.addSimple(item);
   }
@@ -410,7 +405,7 @@ class _MenuItemCard extends StatelessWidget {
               right: 15,
               bottom: 15,
               child: GestureDetector(
-                onTap: _quickAdd,
+                onTap: () => _quickAdd(context),
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -463,10 +458,7 @@ class _MenuImage extends StatelessWidget {
     if (imageUrl.trim().isEmpty) {
       return Container(
         color: Colors.grey[200],
-        child: const Icon(
-          Icons.image_not_supported,
-          color: Colors.grey,
-        ),
+        child: const Icon(Icons.image_not_supported, color: Colors.grey),
       );
     }
 
@@ -476,10 +468,7 @@ class _MenuImage extends StatelessWidget {
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey[200],
-          child: const Icon(
-            Icons.broken_image,
-            color: Colors.grey,
-          ),
+          child: const Icon(Icons.broken_image, color: Colors.grey),
         ),
       );
     }
@@ -489,10 +478,7 @@ class _MenuImage extends StatelessWidget {
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => Container(
         color: Colors.grey[200],
-        child: const Icon(
-          Icons.broken_image,
-          color: Colors.grey,
-        ),
+        child: const Icon(Icons.broken_image, color: Colors.grey),
       ),
     );
   }

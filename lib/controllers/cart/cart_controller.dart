@@ -1,68 +1,99 @@
 import 'package:get/get.dart';
+
 import '../../data/models/menu_item_model.dart';
 
 class CartController extends GetxController {
-  final cartItems = <CartItem>[].obs;
+  final List<CartItem> _items = [];
 
-  List<CartItem> get items => cartItems;
+  List<CartItem> get items => List.unmodifiable(_items);
+  List<CartItem> get cartItems => List.unmodifiable(_items);
 
-  int get subtotal {
-    return cartItems.fold(0, (sum, item) => sum + item.subtotal);
-  }
+  bool get isEmpty => _items.isEmpty;
 
   int get totalQty {
-    return cartItems.fold(0, (sum, item) => sum + item.qty);
+    int total = 0;
+    for (final item in _items) {
+      total += item.qty;
+    }
+    return total;
   }
 
-  bool get isEmpty => cartItems.isEmpty;
+  int get subtotal {
+    int total = 0;
+    for (final item in _items) {
+      total += item.subtotal;
+    }
+    return total;
+  }
 
-  /// ======================
-  /// ADD ITEM
-  /// ======================
-  void addItem(MenuItem item, int qty, String notes) {
-    final key = CartItem.entryKey(item.id, notes);
+  void addSimple(MenuItem menuItem) {
+    addItem(
+      menuItem,
+      1,
+      _defaultNotes(menuItem),
+      unitPrice: _defaultUnitPrice(menuItem),
+      customizationKey: _defaultCustomizationKey(menuItem),
+    );
+  }
 
-    final index = cartItems.indexWhere((e) => e.entryId == key);
+  void addItem(
+    MenuItem menuItem,
+    int qty,
+    String notes, {
+    int? unitPrice,
+    String customizationKey = 'default',
+  }) {
+    if (qty <= 0) return;
+
+    final finalUnitPrice = unitPrice ?? menuItem.price;
+    final entryId = CartItem.entryKey(
+      menuItem.id,
+      customizationKey,
+      notes: notes,
+    );
+
+    final index = _items.indexWhere((item) => item.entryId == entryId);
 
     if (index >= 0) {
-      final existing = cartItems[index];
-      cartItems[index] = existing.copyWith(qty: existing.qty + qty);
+      final current = _items[index];
+      _items[index] = current.copyWith(qty: current.qty + qty);
     } else {
-      cartItems.add(CartItem.detailed(item, qty, notes));
+      _items.add(
+        CartItem(
+          entryId: entryId,
+          menuItem: menuItem,
+          qty: qty,
+          notes: notes,
+          unitPrice: finalUnitPrice,
+          customizationKey: customizationKey,
+        ),
+      );
     }
+
+    update();
   }
 
-  /// ======================
-  /// SIMPLE ADD
-  /// ======================
-  void addSimple(MenuItem item) {
-    addItem(item, 1, '');
-  }
-
-  /// ======================
-  /// REMOVE
-  /// ======================
-  void removeItem(String entryId) {
-    cartItems.removeWhere((e) => e.entryId == entryId);
-  }
-
-  /// ======================
-  /// UPDATE QTY
-  /// ======================
   void updateQty(String entryId, int newQty) {
-    final index = cartItems.indexWhere((e) => e.entryId == entryId);
+    final index = _items.indexWhere((item) => item.entryId == entryId);
     if (index < 0) return;
 
     if (newQty <= 0) {
-      cartItems.removeAt(index);
+      _items.removeAt(index);
     } else {
-      cartItems[index] = cartItems[index].copyWith(qty: newQty);
+      _items[index] = _items[index].copyWith(qty: newQty);
     }
+
+    update();
+  }
+
+  void removeItem(String entryId) {
+    _items.removeWhere((item) => item.entryId == entryId);
+    update();
   }
 
   int qtyForMenu(String menuId) {
     int total = 0;
-    for (final item in cartItems) {
+    for (final item in _items) {
       if (item.menuItem.id == menuId) {
         total += item.qty;
       }
@@ -71,6 +102,39 @@ class CartController extends GetxController {
   }
 
   void clearCart() {
-    cartItems.clear();
+    _items.clear();
+    update();
+  }
+
+  void clearCartSilently() {
+    _items.clear();
+  }
+
+  String _defaultCustomizationKey(MenuItem menuItem) {
+    if (menuItem.isDrink) {
+      return 'temp=ice|ice=normal|sugar=normal';
+    }
+
+    if (menuItem.isFood) {
+      return 'spicy=no|egg=no';
+    }
+
+    return 'default';
+  }
+
+  String _defaultNotes(MenuItem menuItem) {
+    if (menuItem.isDrink) {
+      return 'Temperature: Ice | Ice: Normal | Sugar: Normal';
+    }
+
+    if (menuItem.isFood) {
+      return 'Spicy: Tidak | Egg: Tidak';
+    }
+
+    return '';
+  }
+
+  int _defaultUnitPrice(MenuItem menuItem) {
+    return menuItem.price;
   }
 }

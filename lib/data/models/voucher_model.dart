@@ -1,24 +1,16 @@
-// VoucherModel — representasi voucher/kode promo sesuai pre-plan BAB 3.4
-//
-// Tipe diskon:
-//   percent   → potongan % dari subtotal (ada maxDiscount)
-//   fixed     → potongan nominal tetap
-//   free_item → item tertentu gratis (dihandle manual saat checkout)
-//   birthday  → voucher otomatis ulang tahun
-
 enum VoucherType { percent, fixed, freeItem, birthday }
 
 class VoucherModel {
   final String id;
-  final String code;          // kode unik, case-insensitive
-  final String name;          // label tampil di UI
+  final String code;
+  final String name;
   final VoucherType type;
-  final int discountValue;    // nilai % atau nominal Rp
-  final int? maxDiscount;     // batas potongan untuk tipe percent
-  final int minOrderValue;    // minimum subtotal
-  final int? usageLimit;      // total pemakaian (null = unlimited)
+  final int discountValue;
+  final int? maxDiscount;
+  final int minOrderValue;
+  final int? usageLimit;
   final int usedCount;
-  final int usagePerUser;     // berapa kali 1 user bisa pakai
+  final int usagePerUser;
   final DateTime startDate;
   final DateTime expiryDate;
   final bool isActive;
@@ -39,97 +31,104 @@ class VoucherModel {
     this.isActive = true,
   });
 
-  /// ======================
-  /// FROM MAP (SUPABASE)
-  /// ======================
   factory VoucherModel.fromMap(Map<String, dynamic> map) {
     return VoucherModel(
-      id: map['id'],
-      code: map['code'],
-      name: map['name'],
-      type: VoucherType.values.firstWhere(
-        (e) => e.name == map['type'],
-      ),
-      discountValue: map['discount_value'] ?? 0,
-      maxDiscount: map['max_discount'],
-      minOrderValue: map['min_order_value'] ?? 0,
-      usageLimit: map['usage_limit'],
-      usedCount: map['used_count'] ?? 0,
-      usagePerUser: map['usage_per_user'] ?? 1,
-      startDate: DateTime.parse(map['start_date']),
-      expiryDate: DateTime.parse(map['expiry_date']),
+      id: map['id'].toString(),
+      code: map['code'].toString(),
+      name: map['name'].toString(),
+      type: _parseVoucherType(map['type']),
+      discountValue: _toInt(map['discount_value']),
+      maxDiscount: map['max_discount'] == null
+          ? null
+          : _toInt(map['max_discount']),
+      minOrderValue: _toInt(map['min_order_value']),
+      usageLimit: map['usage_limit'] == null
+          ? null
+          : _toInt(map['usage_limit']),
+      usedCount: _toInt(map['used_count']),
+      usagePerUser: _toInt(map['usage_per_user'] ?? 1),
+      startDate: DateTime.parse(map['start_date'].toString()),
+      expiryDate: DateTime.parse(map['expiry_date'].toString()),
       isActive: map['is_active'] ?? true,
     );
   }
 
-  /// ======================
-  /// HITUNG DISKON (DOMAIN LOGIC)
-  /// ======================
+  static VoucherType _parseVoucherType(dynamic rawType) {
+    final value = (rawType ?? '').toString().trim().toLowerCase();
+
+    switch (value) {
+      case 'percent':
+      case 'percentage':
+        return VoucherType.percent;
+      case 'fixed':
+        return VoucherType.fixed;
+      case 'free_item':
+      case 'freeitem':
+        return VoucherType.freeItem;
+      case 'birthday':
+        return VoucherType.birthday;
+      default:
+        return VoucherType.fixed;
+    }
+  }
+
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    return int.tryParse(value?.toString() ?? '0') ?? 0;
+  }
+
   int calculateDiscount(int subtotal) {
     if (!isValid) return 0;
     if (subtotal < minOrderValue) return 0;
 
     switch (type) {
       case VoucherType.percent:
-        final raw = (subtotal * discountValue / 100).round();
-        return maxDiscount != null ? raw.clamp(0, maxDiscount!) : raw;
+        final rawDiscount = ((subtotal * discountValue) / 100).floor();
+        if (maxDiscount != null) {
+          return rawDiscount.clamp(0, maxDiscount!);
+        }
+        return rawDiscount;
 
       case VoucherType.fixed:
       case VoucherType.birthday:
         return discountValue.clamp(0, subtotal);
 
       case VoucherType.freeItem:
-        return 0; // handled di tempat lain
+        return 0;
     }
   }
 
-  /// ======================
-  /// VALIDASI GLOBAL
-  /// ======================
   bool get isValid {
-    if (!isActive) return false;
-
     final now = DateTime.now();
 
+    if (!isActive) return false;
     if (now.isBefore(startDate)) return false;
     if (now.isAfter(expiryDate)) return false;
-
-    if (usageLimit != null && usedCount >= usageLimit!) {
-      return false;
-    }
+    if (usageLimit != null && usedCount >= usageLimit!) return false;
 
     return true;
   }
 
-  /// ======================
-  /// VALIDASI DETAIL (UNTUK CONTROLLER)
-  /// ======================
   String? validate(int subtotal, int userUsageCount) {
-    if (!isActive) return 'Voucher tidak aktif';
-
     final now = DateTime.now();
 
+    if (!isActive) return 'Voucher tidak aktif';
     if (now.isBefore(startDate)) return 'Voucher belum aktif';
     if (now.isAfter(expiryDate)) return 'Voucher sudah kadaluarsa';
-
     if (usageLimit != null && usedCount >= usageLimit!) {
       return 'Voucher sudah habis';
     }
-
     if (userUsageCount >= usagePerUser) {
       return 'Kamu sudah memakai voucher ini';
     }
-
     if (subtotal < minOrderValue) {
-      return 'Minimum order Rp $minOrderValue untuk pakai voucher ini';
+      return 'Minimum order belum memenuhi syarat voucher';
     }
 
     return null;
   }
 
-  /// ======================
-  /// LABEL UI
-  /// ======================
   String get typeLabel {
     switch (type) {
       case VoucherType.percent:
