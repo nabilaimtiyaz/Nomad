@@ -3,17 +3,17 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'controllers/auth/login_controller.dart';
-import 'controllers/auth/register_controller.dart';
-import 'controllers/cart/cart_controller.dart';
-import 'controllers/home/home_controller.dart';
-import 'controllers/home/main_controller.dart';
-import 'controllers/menu/menu_controller.dart';
-import 'controllers/order/order_controller.dart';
-import 'core/app_state.dart';
-import 'core/constants/app_colors.dart';
-import 'core/routes/app_pages.dart';
-import 'core/routes/app_routes.dart';
+import 'user/controllers/auth/login_controller.dart';
+import 'user/controllers/auth/register_controller.dart';
+import 'user/controllers/cart/cart_controller.dart';
+import 'user/controllers/home/home_controller.dart';
+import 'user/controllers/home/main_controller.dart';
+import 'user/controllers/menu/menu_controller.dart';
+import 'user/controllers/order/order_controller.dart';
+import 'user/core/app_state.dart';
+import 'user/core/constants/app_colors.dart';
+import 'user/core/routes/app_pages.dart';
+import 'user/core/routes/app_routes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
